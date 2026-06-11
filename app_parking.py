@@ -215,6 +215,21 @@ with st.sidebar.expander("📝 จัดการรายชื่ออาค�
             st.warning(f"ลบอาคาร '{bldg_to_delete}' สำเร็จ!")
             st.rerun()
 
+st.sidebar.markdown("---")
+with st.sidebar.expander("📊 ข้อมูลตาราง Google Sheets", expanded=False):
+    st.write("ใส่รหัสผ่านเพื่อดูข้อมูลตาราง")
+    admin_pwd = st.text_input("รหัสผ่าน (Password):", type="password")
+    # ตั้งรหัสผ่านง่ายๆ ไว้ที่ 1234 (แอดมินเปลี่ยนเองได้ในโค้ด)
+    if admin_pwd == "1234":
+        try:
+            df_display = load_data()
+            st.dataframe(df_display, use_container_width=True)
+            st.success("โหลดข้อมูลสำเร็จ")
+        except Exception as e:
+            st.error("ไม่สามารถโหลดข้อมูลได้")
+    elif admin_pwd != "":
+        st.error("รหัสผ่านไม่ถูกต้อง")
+
 
 # ----------------- MAIN APP -----------------
 if 'last_saved_plate' not in st.session_state:
@@ -323,9 +338,4 @@ if st.session_state.last_saved_plate:
             except Exception as e:
                 st.error(f"❌ เกิดข้อผิดพลาดในการลบข้อมูล: {e}")
 
-# ---- DATA TABLE ----
-st.markdown("<hr style='margin-top: 3rem; border-color: #e2e8f0;'>", unsafe_allow_html=True)
-st.markdown('<div style="text-align:center; color: gray; font-size:1rem; margin-bottom: 1rem;">📊 ข้อมูลล่าสุดจาก Google Sheets</div>', unsafe_allow_html=True)
-
-df_display = load_data()
-st.dataframe(df_display, use_container_width=True)
+# ---- END OF APP ----
