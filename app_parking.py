@@ -162,16 +162,20 @@ def init_connection():
     return client.open_by_url(st.secrets["spreadsheet_url"]).sheet1
 
 def load_data():
+    columns = ["วันที่ตรวจพบ", "อาคาร", "ทะเบียนรถ", "จังหวัด"]
+
     try:
         sheet = init_connection()
-        records = sheet.get_all_records()
-        if records:
-            return pd.DataFrame(records)
+        values = sheet.get("A:D")
+
+        if len(values) > 1:
+            return pd.DataFrame(values[1:], columns=columns)
         else:
-            return pd.DataFrame(columns=["วันที่ตรวจพบ", "อาคาร", "ทะเบียนรถ", "จังหวัด"])
+            return pd.DataFrame(columns=columns)
+
     except Exception as e:
         st.error(f"เกิดข้อผิดพลาดในการโหลดข้อมูล: {e}")
-        return pd.DataFrame(columns=["วันที่ตรวจพบ", "อาคาร", "ทะเบียนรถ", "จังหวัด"])
+        return pd.DataFrame(columns=columns)
 
 BUILDINGS_FILE = "buildings.json"
 
