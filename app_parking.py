@@ -285,23 +285,35 @@ with btn_col2:
             current_date = datetime.now().strftime("%Y-%m-%d")
             
             try:
-                row_data = [current_date, building, license_plate, province]
-                res = sheet.append_row(row_data)
+                # ตรวจสอบข้อมูลซ้ำของวันนี้
+                records = sheet.get_all_values()
+                is_duplicate = False
+                for row in records:
+                    if len(row) >= 4:
+                        if row[0] == current_date and row[2] == license_plate and row[3] == province:
+                            is_duplicate = True
+                            break
                 
-                # หา Row Index ที่เพิ่งถูกบันทึกลงไป เพื่อการลบที่แม่นยำ
-                updated_range = res.get('updates', {}).get('updatedRange', '')
-                if updated_range:
-                    match = re.search(r'[A-Z]+(\d+)', updated_range)
-                    if match:
-                        st.session_state.last_saved_row = int(match.group(1))
+                if is_duplicate:
+                    st.error(f"⚠️ ข้อมูลซ้ำ! รถทะเบียน [{license_plate} {province}] ถูกบันทึกไปแล้วในวันนี้ครับ")
+                else:
+                    row_data = [current_date, building, license_plate, province]
+                    res = sheet.append_row(row_data)
+                    
+                    # หา Row Index ที่เพิ่งถูกบันทึกลงไป เพื่อการลบที่แม่นยำ
+                    updated_range = res.get('updates', {}).get('updatedRange', '')
+                    if updated_range:
+                        match = re.search(r'[A-Z]+(\d+)', updated_range)
+                        if match:
+                            st.session_state.last_saved_row = int(match.group(1))
+                        else:
+                            st.session_state.last_saved_row = None
                     else:
                         st.session_state.last_saved_row = None
-                else:
-                    st.session_state.last_saved_row = None
 
-                st.session_state.last_saved_plate = license_plate
-                st.session_state.last_saved_province = province
-                st.success(f"✔️ บันทึกข้อมูลรถยนต์ [{license_plate} {province}] ลง Google Sheets สำเร็จ!")
+                    st.session_state.last_saved_plate = license_plate
+                    st.session_state.last_saved_province = province
+                    st.success(f"✔️ บันทึกข้อมูลรถยนต์ [{license_plate} {province}] ลง Google Sheets สำเร็จ!")
             except Exception as e:
                 st.error(f"❌ เกิดข้อผิดพลาดในการบันทึกข้อมูล: {e}")
 
