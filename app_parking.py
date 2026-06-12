@@ -159,14 +159,15 @@ def init_connection():
         st.error("❌ ไม่พบข้อมูล spreadsheet_url ใน st.secrets")
         st.stop()
         
-    return client.open_by_url(st.secrets["spreadsheet_url"]).sheet1
+    spreadsheet = client.open_by_url(st.secrets["spreadsheet_url"])
+return spreadsheet.worksheet("RawData")
 
 def load_data():
     columns = ["วันที่ตรวจพบ", "อาคาร", "ทะเบียนรถ", "จังหวัด"]
 
     try:
         sheet = init_connection()
-        values = sheet.get("A:D")
+        values = sheet.get("A1:D")
 
         if len(values) > 1:
             return pd.DataFrame(values[1:], columns=columns)
@@ -176,7 +177,7 @@ def load_data():
     except Exception as e:
         st.error(f"เกิดข้อผิดพลาดในการโหลดข้อมูล: {e}")
         return pd.DataFrame(columns=columns)
-
+        
 BUILDINGS_FILE = "buildings.json"
 
 def load_buildings():
