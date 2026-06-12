@@ -232,8 +232,12 @@ with st.sidebar.expander("📊 ข้อมูลตาราง Google Sheets",
             tab1, tab2 = st.tabs(["📝 ข้อมูลทั้งหมด", "🚨 สรุปข้อมูลรถจอดนาน"])
             
             with tab1:
-                st.dataframe(df_display, use_container_width=True)
-                st.success(f"โหลดข้อมูลสำเร็จทั้งหมด {len(df_display)} รายการ")
+                current_date = datetime.now().strftime("%Y-%m-%d")
+
+                df_today = df_display[df_display["วันที่ตรวจพบ"].astype(str) == current_date]
+
+                st.dataframe(df_today, use_container_width=True)
+                st.success(f"โหลดข้อมูลประจำวันที่ {current_date} ทั้งหมด {len(df_today)} รายการ")
                 
             with tab2:
                 st.write("**วิเคราะห์รถที่จอดข้ามคืนสะสม**")
