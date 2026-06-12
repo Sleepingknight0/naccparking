@@ -223,10 +223,36 @@ with st.sidebar.expander("📊 ข้อมูลตาราง Google Sheets",
     if admin_pwd == "1234":
         try:
             df_display = load_data()
-            st.dataframe(df_display, use_container_width=True)
-            st.success("โหลดข้อมูลสำเร็จ")
+            
+            tab1, tab2 = st.tabs(["📝 ข้อมูลทั้งหมด", "🚨 สรุปข้อมูลรถจอดนาน"])
+            
+            with tab1:
+                st.dataframe(df_display, use_container_width=True)
+                st.success(f"โหลดข้อมูลสำเร็จทั้งหมด {len(df_display)} รายการ")
+                
+            with tab2:
+                st.write("**วิเคราะห์รถที่จอดข้ามคืนสะสม**")
+                days_threshold = st.number_input("กรองเฉพาะรถที่จอดสะสมตั้งแต่ (วัน):", min_value=1, value=7, step=1)
+                
+                if not df_display.empty:
+                    # จัดกลุ่มตามทะเบียน จังหวัด และอาคารเพื่อนับจำนวนวัน
+                    summary = df_display.groupby(['ทะเบียนรถ', 'จังหวัด', 'อาคาร']).size().reset_index(name='จำนวนวันที่จอดสะสม (วัน)')
+                    
+                    # กรองเฉพาะที่จอดเกินวันที่กำหนด
+                    long_parkers = summary[summary['จำนวนวันที่จอดสะสม (วัน)'] >= days_threshold]
+                    
+                    # เรียงจากจอดนานสุดไปน้อยสุด
+                    long_parkers = long_parkers.sort_values(by='จำนวนวันที่จอดสะสม (วัน)', ascending=False).reset_index(drop=True)
+                    
+                    if not long_parkers.empty:
+                        st.dataframe(long_parkers, use_container_width=True)
+                        st.warning(f"พบรถที่จอดสะสม {days_threshold} วันขึ้นไป จำนวน {len(long_parkers)} คัน")
+                    else:
+                        st.success(f"ยังไม่พบรถที่จอดสะสมถึง {days_threshold} วัน 🎉")
+                else:
+                    st.info("ยังไม่มีข้อมูลในระบบ")
         except Exception as e:
-            st.error("ไม่สามารถโหลดข้อมูลได้")
+            st.error(f"ไม่สามารถโหลดข้อมูลได้: {e}")
     elif admin_pwd != "":
         st.error("รหัสผ่านไม่ถูกต้อง")
 
