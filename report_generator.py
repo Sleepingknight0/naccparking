@@ -1,5 +1,6 @@
 import calendar
 import datetime as dt
+import html
 import io
 from pathlib import Path
 
@@ -19,6 +20,52 @@ REPORT_COLUMNS = [
     "จำนวนวันที่พบทั้งหมด",
     "สถานะ",
 ]
+
+FONT_DIRECTORIES = [
+    Path("font"),
+    Path("assets/fonts"),
+]
+
+FONT_CANDIDATES = [
+    Path("font/THSarabunIT๙.ttf"),
+    Path("font/TH NiramitIT๙.ttf"),
+    Path("font/Sarabun-Regular.ttf"),
+    Path("font/NotoSansThai-Regular.ttf"),
+    Path("font/Kanit-Regular.ttf"),
+    Path("font/Prompt-Regular.ttf"),
+    Path("assets/fonts/THSarabunNew.ttf"),
+    Path("assets/fonts/THSarabun.ttf"),
+    Path("assets/fonts/THSarabunNew/THSarabunNew.ttf"),
+    Path("assets/fonts/NotoSansThai-Regular.ttf"),
+    Path("C:/Windows/Fonts/THSarabunNew.ttf"),
+    Path("C:/Windows/Fonts/tahoma.ttf"),
+    Path("/usr/share/fonts/truetype/noto/NotoSansThai-Regular.ttf"),
+    Path("/usr/share/fonts/truetype/thai/Garuda.ttf"),
+    Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"),
+]
+
+REPORT_FONT_CHOICES = {
+    "TH Sarabun IT๙": Path("font/THSarabunIT๙.ttf"),
+    "TH Niramit IT๙": Path("font/TH NiramitIT๙.ttf"),
+    "Sarabun": Path("font/Sarabun-Regular.ttf"),
+    "Noto Sans Thai": Path("font/NotoSansThai-Regular.ttf"),
+    "Kanit": Path("font/Kanit-Regular.ttf"),
+    "Prompt": Path("font/Prompt-Regular.ttf"),
+}
+
+PDF_FONT_SIZES = {
+    "title": 26,
+    "heading": 24,
+    "body": 18,
+    "table": 16,
+}
+
+IMAGE_FONT_SIZES = {
+    "title": 26,
+    "heading": 24,
+    "body": 18,
+    "small": 16,
+}
 
 
 def get_report_period(report_type, selected_date):
@@ -106,41 +153,55 @@ def to_csv_bytes(df):
     return df.to_csv(index=False, encoding="utf-8-sig").encode("utf-8-sig")
 
 
-def to_summary_pdf_bytes(df, report_label):
+def to_summary_pdf_bytes(df, report_label, font_path=None):
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
     from reportlab.lib.units import cm
-    from reportlab.pdfbase import pdfmetrics
-    from reportlab.pdfbase.ttfonts import TTFont
     from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
     buffer = io.BytesIO()
-    font_name = _register_pdf_font()
+    font_name = _register_pdf_font(font_path)
     styles = getSampleStyleSheet()
     title_style = ParagraphStyle(
         "ThaiTitle",
         parent=styles["Title"],
         fontName=font_name,
-        fontSize=18,
-        leading=24,
+        fontSize=PDF_FONT_SIZES["title"],
+        leading=32,
+        spaceAfter=8,
+    )
+    heading_style = ParagraphStyle(
+        "ThaiHeading",
+        parent=styles["Heading2"],
+        fontName=font_name,
+        fontSize=PDF_FONT_SIZES["heading"],
+        leading=30,
+        spaceBefore=6,
         spaceAfter=8,
     )
     normal_style = ParagraphStyle(
         "ThaiNormal",
         parent=styles["Normal"],
         fontName=font_name,
-        fontSize=10,
-        leading=14,
+        fontSize=PDF_FONT_SIZES["body"],
+        leading=24,
+    )
+    detail_style = ParagraphStyle(
+        "ThaiDetail",
+        parent=styles["Normal"],
+        fontName=font_name,
+        fontSize=PDF_FONT_SIZES["table"],
+        leading=22,
     )
 
     doc = SimpleDocTemplate(
         buffer,
         pagesize=A4,
-        rightMargin=1.5 * cm,
-        leftMargin=1.5 * cm,
-        topMargin=1.5 * cm,
-        bottomMargin=1.5 * cm,
+        rightMargin=1.2 * cm,
+        leftMargin=1.2 * cm,
+        topMargin=1.2 * cm,
+        bottomMargin=1.2 * cm,
     )
     story = [
         Paragraph("รายงานรถค้างอาคาร", title_style),
@@ -156,51 +217,39 @@ def to_summary_pdf_bytes(df, report_label):
         ["รถสถานะเฝ้าดู", str(_count_status(df, "เฝ้าดู"))],
         ["รถเกิน 7 วัน", str(_count_status(df, "เกิน 7 วัน"))],
     ]
-    story.append(_build_pdf_table(summary_rows, font_name, [10 * cm, 4 * cm]))
+    story.append(_build_pdf_table(summary_rows, font_name, [12 * cm, 4 * cm]))
     story.append(Spacer(1, 0.45 * cm))
 
-    top_rows = [["ลำดับ", "ทะเบียน", "จังหวัด", "อาคารล่าสุด", "วันในช่วง", "สถานะ"]]
-    for _, row in df.head(20).iterrows():
-        top_rows.append(
-            [
-                str(row.get("ลำดับ", "")),
-                str(row.get("ทะเบียนรถ", "")),
-                str(row.get("จังหวัด", "")),
-                str(row.get("อาคารล่าสุด", "")),
-                str(row.get("จำนวนวันที่พบในช่วง", "")),
-                str(row.get("สถานะ", "")),
-            ]
-        )
-    story.append(Paragraph("รายการรถ", normal_style))
+    story.append(Paragraph("รายการรถ", heading_style))
     story.append(Spacer(1, 0.2 * cm))
-    story.append(
-        _build_pdf_table(top_rows, font_name, [1.4 * cm, 2.8 * cm, 3 * cm, 3.2 * cm, 1.9 * cm, 3 * cm])
-    )
+    for _, row in df.head(20).iterrows():
+        story.append(_build_pdf_vehicle_card(row, normal_style, detail_style))
+        story.append(Spacer(1, 0.18 * cm))
 
     doc.build(story)
     return buffer.getvalue()
 
 
-def to_summary_jpg_bytes(df, report_label):
-    from PIL import Image, ImageDraw, ImageFont
+def to_summary_jpg_bytes(df, report_label, font_path=None):
+    from PIL import Image, ImageDraw
 
-    width = 1400
-    row_height = 48
-    table_rows = min(len(df), 18)
-    height = 430 + (table_rows + 1) * row_height
+    width = 1080
+    item_height = 116
+    item_count = min(len(df), 12)
+    height = 560 + (item_count * item_height)
     image = Image.new("RGB", (width, height), "white")
     draw = ImageDraw.Draw(image)
-    title_font = _load_image_font(34)
-    heading_font = _load_image_font(24)
-    body_font = _load_image_font(20)
-    small_font = _load_image_font(18)
+    title_font = _load_image_font(IMAGE_FONT_SIZES["title"], font_path)
+    heading_font = _load_image_font(IMAGE_FONT_SIZES["heading"], font_path)
+    body_font = _load_image_font(IMAGE_FONT_SIZES["body"], font_path)
+    small_font = _load_image_font(IMAGE_FONT_SIZES["small"], font_path)
 
-    x = 60
-    y = 50
+    x = 56
+    y = 48
     draw.text((x, y), "รายงานรถค้างอาคาร", fill="#17324d", font=title_font)
-    y += 50
+    y += 44
     draw.text((x, y), report_label, fill="#334155", font=body_font)
-    y += 55
+    y += 54
 
     summary = [
         ("จำนวนรถในรายงาน", len(df)),
@@ -209,54 +258,38 @@ def to_summary_jpg_bytes(df, report_label):
         ("รถสถานะเฝ้าดู", _count_status(df, "เฝ้าดู")),
         ("รถเกิน 7 วัน", _count_status(df, "เกิน 7 วัน")),
     ]
-    card_width = 245
-    card_height = 92
+    card_width = 462
+    card_height = 82
     for index, (label, value) in enumerate(summary):
-        card_x = x + index * (card_width + 15)
+        card_x = x + (index % 2) * (card_width + 44)
+        card_y = y + (index // 2) * (card_height + 16)
         draw.rounded_rectangle(
-            (card_x, y, card_x + card_width, y + card_height),
+            (card_x, card_y, card_x + card_width, card_y + card_height),
             radius=12,
             fill="#f1f5f9",
             outline="#cbd5e1",
         )
-        draw.text((card_x + 18, y + 16), label, fill="#475569", font=small_font)
-        draw.text((card_x + 18, y + 48), str(value), fill="#0f172a", font=heading_font)
-    y += 130
+        draw.text((card_x + 18, card_y + 13), label, fill="#475569", font=small_font)
+        draw.text((card_x + 18, card_y + 42), str(value), fill="#0f172a", font=heading_font)
+    y += 284
 
     draw.text((x, y), "รายการรถ", fill="#17324d", font=heading_font)
     y += 42
-    columns = [
-        ("ลำดับ", 80),
-        ("ทะเบียน", 180),
-        ("จังหวัด", 230),
-        ("อาคารล่าสุด", 240),
-        ("วันในช่วง", 120),
-        ("สถานะ", 220),
-    ]
-    table_x = x
-    draw.rectangle((table_x, y, width - x, y + row_height), fill="#e8eef5", outline="#b9c4cf")
-    current_x = table_x
-    for label, col_width in columns:
-        draw.text((current_x + 12, y + 12), label, fill="#17324d", font=small_font)
-        current_x += col_width
-    y += row_height
 
-    for row_index, (_, row) in enumerate(df.head(table_rows).iterrows()):
+    card_width = width - (x * 2)
+    for row_index, (_, row) in enumerate(df.head(item_count).iterrows()):
         fill = "#ffffff" if row_index % 2 == 0 else "#f8fafc"
-        draw.rectangle((table_x, y, width - x, y + row_height), fill=fill, outline="#d8e0e8")
-        values = [
-            row.get("ลำดับ", ""),
-            row.get("ทะเบียนรถ", ""),
-            row.get("จังหวัด", ""),
-            row.get("อาคารล่าสุด", ""),
-            row.get("จำนวนวันที่พบในช่วง", ""),
-            row.get("สถานะ", ""),
-        ]
-        current_x = table_x
-        for value, (_, col_width) in zip(values, columns):
-            draw.text((current_x + 12, y + 12), str(value), fill="#0f172a", font=small_font)
-            current_x += col_width
-        y += row_height
+        draw.rounded_rectangle(
+            (x, y, x + card_width, y + item_height - 12),
+            radius=10,
+            fill=fill,
+            outline="#d8e0e8",
+        )
+        first_line, second_line, third_line = _format_report_row_lines(row)
+        draw.text((x + 18, y + 15), _fit_text(draw, first_line, body_font, card_width - 36), fill="#0f172a", font=body_font)
+        draw.text((x + 18, y + 47), _fit_text(draw, second_line, small_font, card_width - 36), fill="#334155", font=small_font)
+        draw.text((x + 18, y + 76), _fit_text(draw, third_line, small_font, card_width - 36), fill="#475569", font=small_font)
+        y += item_height
 
     buffer = io.BytesIO()
     image.save(buffer, format="JPEG", quality=92)
@@ -270,6 +303,41 @@ def make_report_filename(report_type, selected_date, extension):
     else:
         date_part = f"{start:%Y%m%d}-{end:%Y%m%d}"
     return f"naccparking-{report_type}-{date_part}.{extension}"
+
+
+def get_report_font_options():
+    options = {"อัตโนมัติ (ค่าแนะนำ)": None}
+
+    for fonts_dir in FONT_DIRECTORIES:
+        if fonts_dir.exists():
+            font_files = sorted(list(fonts_dir.glob("*.ttf")) + list(fonts_dir.glob("*.otf")))
+            for font_path in font_files:
+                options.setdefault(_font_label(font_path), str(font_path))
+
+    for label, font_path in REPORT_FONT_CHOICES.items():
+        options.setdefault(label, str(font_path))
+
+    for font_path in FONT_CANDIDATES:
+        if font_path.exists():
+            options.setdefault(_font_label(font_path), str(font_path))
+
+    return options
+
+
+def resolve_font_candidates(font_path=None):
+    candidates = []
+    if font_path:
+        candidates.append(Path(font_path))
+    candidates.extend(FONT_CANDIDATES)
+
+    unique_candidates = []
+    seen = set()
+    for candidate in candidates:
+        candidate_key = str(candidate)
+        if candidate_key not in seen:
+            unique_candidates.append(candidate)
+            seen.add(candidate_key)
+    return unique_candidates
 
 
 def _prepare_data(df):
@@ -315,6 +383,73 @@ def _count_status(df, status):
     return int((df["สถานะ"] == status).sum())
 
 
+def _build_pdf_vehicle_card(row, normal_style, detail_style):
+    from reportlab.lib import colors
+    from reportlab.lib.units import cm
+    from reportlab.platypus import Paragraph, Table, TableStyle
+
+    first_line, second_line, third_line = _format_report_row_lines(row)
+    table = Table(
+        [
+            [Paragraph(_escape_pdf_text(first_line), normal_style)],
+            [Paragraph(_escape_pdf_text(second_line), detail_style)],
+            [Paragraph(_escape_pdf_text(third_line), detail_style)],
+        ],
+        colWidths=[16.8 * cm],
+    )
+    table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f8fafc")),
+                ("BOX", (0, 0), (-1, -1), 0.4, colors.HexColor("#d8e0e8")),
+                ("LEFTPADDING", (0, 0), (-1, -1), 8),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+                ("TOPPADDING", (0, 0), (-1, -1), 5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ]
+        )
+    )
+    return table
+
+
+def _format_report_row_lines(row):
+    first_line = (
+        f"{row.get('ลำดับ', '')}. ทะเบียน {row.get('ทะเบียนรถ', '')} "
+        f"จังหวัด {row.get('จังหวัด', '')}"
+    )
+    second_line = (
+        f"อาคารล่าสุด: {row.get('อาคารล่าสุด', '')} | "
+        f"พบล่าสุด: {_format_date_value(row.get('วันที่พบล่าสุดในช่วง', ''))}"
+    )
+    third_line = (
+        f"วันในช่วง: {row.get('จำนวนวันที่พบในช่วง', '')} | "
+        f"รวมทั้งหมด: {row.get('จำนวนวันที่พบทั้งหมด', '')} | "
+        f"สถานะ: {row.get('สถานะ', '')}"
+    )
+    return first_line, second_line, third_line
+
+
+def _format_date_value(value):
+    if isinstance(value, dt.date):
+        return value.strftime("%d/%m/%Y")
+    return str(value)
+
+
+def _escape_pdf_text(value):
+    return html.escape(str(value))
+
+
+def _fit_text(draw, text, font, max_width):
+    text = str(text)
+    if draw.textlength(text, font=font) <= max_width:
+        return text
+
+    ellipsis = "..."
+    while text and draw.textlength(text + ellipsis, font=font) > max_width:
+        text = text[:-1]
+    return text + ellipsis if text else ellipsis
+
+
 def _build_pdf_table(rows, font_name, column_widths):
     from reportlab.lib import colors
     from reportlab.platypus import Table, TableStyle
@@ -324,7 +459,8 @@ def _build_pdf_table(rows, font_name, column_widths):
         TableStyle(
             [
                 ("FONTNAME", (0, 0), (-1, -1), font_name),
-                ("FONTSIZE", (0, 0), (-1, -1), 9),
+                ("FONTSIZE", (0, 0), (-1, -1), PDF_FONT_SIZES["table"]),
+                ("LEADING", (0, 0), (-1, -1), PDF_FONT_SIZES["table"] + 4),
                 ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#e8eef5")),
                 ("TEXTCOLOR", (0, 0), (-1, 0), colors.HexColor("#17324d")),
                 ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#b9c4cf")),
@@ -340,37 +476,30 @@ def _build_pdf_table(rows, font_name, column_widths):
     return table
 
 
-def _register_pdf_font():
+def _register_pdf_font(font_path=None):
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.ttfonts import TTFont
 
-    candidates = [
-        Path("assets/fonts/NotoSansThai-Regular.ttf"),
-        Path("C:/Windows/Fonts/tahoma.ttf"),
-        Path("C:/Windows/Fonts/THSarabunNew.ttf"),
-        Path("/usr/share/fonts/truetype/noto/NotoSansThai-Regular.ttf"),
-        Path("/usr/share/fonts/truetype/thai/Garuda.ttf"),
-        Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"),
-    ]
-    for font_path in candidates:
-        if font_path.exists():
-            pdfmetrics.registerFont(TTFont("ReportThai", str(font_path)))
+    for candidate in resolve_font_candidates(font_path):
+        if candidate.exists():
+            pdfmetrics.registerFont(TTFont("ReportThai", str(candidate)))
             return "ReportThai"
     return "Helvetica"
 
 
-def _load_image_font(size):
+def _load_image_font(size, font_path=None):
     from PIL import ImageFont
 
-    candidates = [
-        Path("assets/fonts/NotoSansThai-Regular.ttf"),
-        Path("C:/Windows/Fonts/tahoma.ttf"),
-        Path("C:/Windows/Fonts/THSarabunNew.ttf"),
-        Path("/usr/share/fonts/truetype/noto/NotoSansThai-Regular.ttf"),
-        Path("/usr/share/fonts/truetype/thai/Garuda.ttf"),
-        Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"),
-    ]
-    for font_path in candidates:
-        if font_path.exists():
-            return ImageFont.truetype(str(font_path), size=size)
+    for candidate in resolve_font_candidates(font_path):
+        if candidate.exists():
+            return ImageFont.truetype(str(candidate), size=size)
     return ImageFont.load_default()
+
+
+def _font_label(font_path):
+    known_labels = {
+        "THSarabunNew": "TH Sarabun New",
+        "THSarabun": "TH Sarabun",
+        "NotoSansThai-Regular": "Noto Sans Thai",
+    }
+    return known_labels.get(font_path.stem, font_path.stem)

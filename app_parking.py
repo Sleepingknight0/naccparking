@@ -10,6 +10,7 @@ import re
 from parking_analysis import summarize_long_parkers
 from report_generator import (
     build_detailed_report,
+    get_report_font_options,
     make_report_filename,
     to_csv_bytes,
     to_summary_jpg_bytes,
@@ -277,6 +278,11 @@ with st.sidebar.expander("📥 โหลดรีพอร์ต", expanded=Fals
     if report_pwd == "1234":
         report_type = st.selectbox("ประเภทรายงาน", ["รายวัน", "รายสัปดาห์", "รายเดือน"])
         report_date = st.date_input("เลือกวันที่", value=datetime.now().date())
+        report_font_options = get_report_font_options()
+        report_font_label = st.selectbox("ฟอนต์รายงาน", list(report_font_options.keys()))
+        report_font_path = report_font_options[report_font_label]
+        if report_font_path and not os.path.exists(report_font_path):
+            st.caption(f"ยังไม่พบไฟล์ {report_font_path} ถ้าโหลดตอนนี้ระบบจะใช้ฟอนต์สำรอง")
         report_df = build_detailed_report(load_data(), report_type, report_date)
 
         if report_df.empty:
@@ -292,14 +298,22 @@ with st.sidebar.expander("📥 โหลดรีพอร์ต", expanded=Fals
             )
             st.download_button(
                 "⬇️ ดาวน์โหลด PDF สรุป",
-                data=to_summary_pdf_bytes(report_df, report_df["ช่วงรายงาน"].iloc[0]),
+                data=to_summary_pdf_bytes(
+                    report_df,
+                    report_df["ช่วงรายงาน"].iloc[0],
+                    font_path=report_font_path,
+                ),
                 file_name=make_report_filename(report_type, report_date, "pdf"),
                 mime="application/pdf",
                 use_container_width=True,
             )
             st.download_button(
                 "⬇️ ดาวน์โหลด JPG สรุป",
-                data=to_summary_jpg_bytes(report_df, report_df["ช่วงรายงาน"].iloc[0]),
+                data=to_summary_jpg_bytes(
+                    report_df,
+                    report_df["ช่วงรายงาน"].iloc[0],
+                    font_path=report_font_path,
+                ),
                 file_name=make_report_filename(report_type, report_date, "jpg"),
                 mime="image/jpeg",
                 use_container_width=True,
