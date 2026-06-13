@@ -56,10 +56,10 @@ REPORT_FONT_CHOICES = {
 }
 
 PDF_FONT_SIZES = {
-    "title": 24,
-    "heading": 20,
-    "body": 16,
-    "table": 14,
+    "title": 22,
+    "heading": 18,
+    "body": 14,
+    "table": 12,
 }
 
 IMAGE_FONT_SIZES = {
@@ -155,7 +155,7 @@ def to_csv_bytes(df):
     return df.to_csv(index=False, encoding="utf-8-sig").encode("utf-8-sig")
 
 
-def to_summary_pdf_bytes(df, report_label, font_path=None):
+def to_summary_pdf_bytes(df, report_label, font_path=None, report_type=None):
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
@@ -187,15 +187,16 @@ def to_summary_pdf_bytes(df, report_label, font_path=None):
         parent=styles["Normal"],
         fontName=font_name,
         fontSize=PDF_FONT_SIZES["body"],
-        leading=19,
+        leading=17,
     )
     detail_style = ParagraphStyle(
         "ThaiDetail",
         parent=styles["Normal"],
         fontName=font_name,
         fontSize=PDF_FONT_SIZES["table"],
-        leading=17,
+        leading=15,
     )
+    summary_df = _select_summary_rows(df, report_type)
 
     doc = SimpleDocTemplate(
         buffer,
@@ -222,9 +223,9 @@ def to_summary_pdf_bytes(df, report_label, font_path=None):
     story.append(_build_pdf_table(summary_rows, font_name, [12 * cm, 4 * cm]))
     story.append(Spacer(1, 0.25 * cm))
 
-    story.append(Paragraph("รายการรถ", heading_style))
+    story.append(Paragraph(_summary_vehicle_heading(report_type), heading_style))
     story.append(Spacer(1, 0.1 * cm))
-    for _, row in df.iterrows():
+    for _, row in summary_df.iterrows():
         story.append(_build_pdf_vehicle_card(row, normal_style, detail_style))
         story.append(Spacer(1, 0.08 * cm))
 
@@ -232,14 +233,15 @@ def to_summary_pdf_bytes(df, report_label, font_path=None):
     return buffer.getvalue()
 
 
-def to_summary_jpg_bytes(df, report_label, font_path=None):
+def to_summary_jpg_bytes(df, report_label, font_path=None, report_type=None):
     from PIL import Image, ImageDraw
 
+    summary_df = _select_summary_rows(df, report_type)
     width = 1080
     vehicle_columns = 3
     column_gap = 14
     item_height = 82
-    item_count = len(df)
+    item_count = len(summary_df)
     vehicle_rows = max(1, math.ceil(item_count / vehicle_columns))
     height = 430 + (vehicle_rows * item_height)
     image = Image.new("RGB", (width, height), "white")
@@ -278,11 +280,11 @@ def to_summary_jpg_bytes(df, report_label, font_path=None):
         draw.text((card_x + 16, card_y + 32), str(value), fill="#0f172a", font=heading_font)
     y += 220
 
-    draw.text((x, y), "รายการรถ", fill="#17324d", font=heading_font)
+    draw.text((x, y), _summary_vehicle_heading(report_type), fill="#17324d", font=heading_font)
     y += 32
 
     card_width = (width - (x * 2) - column_gap) // vehicle_columns
-    for row_index, (_, row) in enumerate(df.iterrows()):
+    for row_index, (_, row) in enumerate(summary_df.iterrows()):
         column_index = row_index % vehicle_columns
         grid_row_index = row_index // vehicle_columns
         card_x = x + column_index * (card_width + column_gap)
@@ -389,6 +391,35 @@ def _count_status(df, status):
     if "สถานะ" not in df.columns:
         return 0
     return int((df["สถานะ"] == status).sum())
+
+
+def _select_summary_rows(df, report_type):
+    if report_type not in {"รายสัปดาห์", "รายเดือน"}:
+        return df
+
+    sort_columns = [
+        "จำนวนวันที่พบทั้งหมด",
+        "จำนวนวันที่พบในช่วง",
+        "วันที่พบล่าสุดในช่วง",
+    ]
+    existing_sort_columns = [column for column in sort_columns if column in df.columns]
+    if not existing_sort_columns:
+        return df.head(10)
+
+    return (
+        df.sort_values(
+            by=existing_sort_columns,
+            ascending=[False] * len(existing_sort_columns),
+        )
+        .head(10)
+        .reset_index(drop=True)
+    )
+
+
+def _summary_vehicle_heading(report_type):
+    if report_type in {"รายสัปดาห์", "รายเดือน"}:
+        return "Top 10 รถที่จอดค้างนานที่สุด"
+    return "รายการรถ"
 
 
 def _build_pdf_vehicle_card(row, normal_style, detail_style):
