@@ -20,6 +20,7 @@ REPORT_COLUMNS = [
     "ทะเบียน_clean",
     "จำนวนวันที่พบในช่วง",
     "จำนวนวันที่พบทั้งหมด",
+    "จำนวนวันที่จอดติดต่อกัน (วัน)",
     "สถานะ",
 ]
 
@@ -155,6 +156,11 @@ def build_detailed_report(df, report_type, selected_date):
         lambda row: _status_for_row(row, start),
         axis=1,
     )
+    date_sets = _date_sets_by_parking_key(prepared)
+    report["จำนวนวันที่จอดติดต่อกัน (วัน)"] = report.apply(
+        lambda row: _consecutive_days_until_latest(row, date_sets),
+        axis=1,
+    )
     report = report.sort_values(
         by=["จำนวนวันที่พบในช่วง", "วันที่พบล่าสุดในช่วง", "ทะเบียน_clean"],
         ascending=[False, False, True],
@@ -248,7 +254,7 @@ def to_summary_pdf_bytes(df, report_label, font_path=None, report_type=None):
     story.append(Paragraph(_summary_vehicle_heading(report_type), heading_style))
     story.append(Spacer(1, 0.1 * cm))
     for _, row in summary_df.iterrows():
-        story.append(_build_pdf_vehicle_card(row, normal_style, detail_style))
+        story.append(_build_pdf_vehicle_card(row, normal_style, detail_style, report_type))
         story.append(Spacer(1, 0.08 * cm))
 
     doc.build(story)
@@ -327,18 +333,18 @@ def to_summary_jpg_bytes(df, report_label, font_path=None, report_type=None):
         grid_row_index = row_index // vehicle_columns
         card_x = x + column_index * (card_width + column_gap)
         card_y = y + grid_row_index * item_height
-        level_style = _parking_level_style(row.get("จำนวนวันที่พบในช่วง", 0))
+        level_style = _parking_level_style(_parking_level_days(row, report_type))
         draw.rounded_rectangle(
             (card_x, card_y, card_x + card_width, card_y + item_height - 8),
             radius=10,
-            fill=level_style["background"],
-            outline=level_style["border"],
+            fill="#ffffff" if row_index % 2 == 0 else "#f8fafc",
+            outline="#d8e0e8",
         )
         draw.ellipse(
             (card_x + card_width - 26, card_y + 10, card_x + card_width - 12, card_y + 24),
             fill=level_style["dot"],
         )
-        first_line, second_line, third_line = _format_report_row_lines(row)
+        first_line, second_line, third_line = _format_report_row_lines(row, report_type)
         draw.text((card_x + 14, card_y + 7), _fit_text(draw, first_line, body_font, card_width - 48), fill="#0f172a", font=body_font)
         draw.text((card_x + 14, card_y + 31), _fit_text(draw, second_line, small_font, card_width - 28), fill="#334155", font=small_font)
         draw.text((card_x + 14, card_y + 52), _fit_text(draw, third_line, small_font, card_width - 28), fill="#475569", font=small_font)
@@ -435,6 +441,31 @@ def _count_status(df, status):
     return int((df["สถานะ"] == status).sum())
 
 
+def _date_sets_by_parking_key(prepared):
+    unique_days = prepared.drop_duplicates(
+        subset=["วันที่ตรวจพบ", "ทะเบียน_clean", "จังหวัด"]
+    )
+    return (
+        unique_days.groupby(["ทะเบียน_clean", "จังหวัด"])["วันที่ตรวจพบ"]
+        .apply(set)
+        .to_dict()
+    )
+
+
+def _consecutive_days_until_latest(row, date_sets):
+    latest_date = row.get("วันที่พบล่าสุดในช่วง")
+    if pd.isna(latest_date):
+        return 0
+
+    date_set = date_sets.get((row.get("ทะเบียน_clean"), row.get("จังหวัด")), set())
+    current_date = latest_date
+    consecutive_days = 0
+    while current_date in date_set:
+        consecutive_days += 1
+        current_date = current_date - dt.timedelta(days=1)
+    return consecutive_days
+
+
 def _building_summary_rows(df):
     if "อาคารล่าสุด" not in df.columns:
         return []
@@ -453,6 +484,12 @@ def _parking_level_style(days):
 
     level = max(1, min(10, days))
     return PARKING_LEVEL_STYLES[level - 1]
+
+
+def _parking_level_days(row, report_type):
+    if report_type in {"รายสัปดาห์", "รายเดือน"}:
+        return row.get("จำนวนวันที่พบในช่วง", 0)
+    return row.get("จำนวนวันที่พบทั้งหมด", 0)
 
 
 def _select_summary_rows(df, report_type):
@@ -484,16 +521,16 @@ def _summary_vehicle_heading(report_type):
     return "รายการรถ"
 
 
-def _build_pdf_vehicle_card(row, normal_style, detail_style):
+def _build_pdf_vehicle_card(row, normal_style, detail_style, report_type=None):
     from reportlab.lib import colors
     from reportlab.lib.units import cm
     from reportlab.platypus import Paragraph, Table, TableStyle
 
-    first_line, second_line, third_line = _format_report_row_lines(row)
-    level_style = _parking_level_style(row.get("จำนวนวันที่พบในช่วง", 0))
+    first_line, second_line, third_line = _format_report_row_lines(row, report_type)
+    level_style = _parking_level_style(_parking_level_days(row, report_type))
     table = Table(
         [
-            [Paragraph(_escape_pdf_text(first_line), normal_style)],
+            [Paragraph(f'<font color="{level_style["dot"]}">●</font> {_escape_pdf_text(first_line)}', normal_style)],
             [Paragraph(_escape_pdf_text(second_line), detail_style)],
             [Paragraph(_escape_pdf_text(third_line), detail_style)],
         ],
@@ -502,8 +539,8 @@ def _build_pdf_vehicle_card(row, normal_style, detail_style):
     table.setStyle(
         TableStyle(
             [
-                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor(level_style["background"])),
-                ("BOX", (0, 0), (-1, -1), 0.6, colors.HexColor(level_style["border"])),
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f8fafc")),
+                ("BOX", (0, 0), (-1, -1), 0.4, colors.HexColor("#d8e0e8")),
                 ("LEFTPADDING", (0, 0), (-1, -1), 8),
                 ("RIGHTPADDING", (0, 0), (-1, -1), 8),
                 ("TOPPADDING", (0, 0), (-1, -1), 5),
@@ -514,8 +551,8 @@ def _build_pdf_vehicle_card(row, normal_style, detail_style):
     return table
 
 
-def _format_report_row_lines(row):
-    level_style = _parking_level_style(row.get("จำนวนวันที่พบในช่วง", 0))
+def _format_report_row_lines(row, report_type=None):
+    level_style = _parking_level_style(_parking_level_days(row, report_type))
     first_line = (
         f"{row.get('ลำดับ', '')}. {row.get('ทะเบียนรถ', '')} | "
         f"{row.get('จังหวัด', '')}"
@@ -525,8 +562,8 @@ def _format_report_row_lines(row):
         f"ล่าสุด: {_format_date_value(row.get('วันที่พบล่าสุดในช่วง', ''))}"
     )
     third_line = (
-        f"ช่วง: {row.get('จำนวนวันที่พบในช่วง', '')} | "
-        f"รวม: {row.get('จำนวนวันที่พบทั้งหมด', '')} | "
+        f"รวมทั้งหมด: {row.get('จำนวนวันที่พบทั้งหมด', '')} วัน | "
+        f"ติดต่อกัน: {row.get('จำนวนวันที่จอดติดต่อกัน (วัน)', '')} วัน | "
         f"ระดับ {level_style['level']}/10 | {row.get('สถานะ', '')}"
     )
     return first_line, second_line, third_line
