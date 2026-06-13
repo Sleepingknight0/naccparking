@@ -54,17 +54,17 @@ REPORT_FONT_CHOICES = {
 }
 
 PDF_FONT_SIZES = {
-    "title": 26,
-    "heading": 24,
-    "body": 18,
-    "table": 16,
+    "title": 24,
+    "heading": 20,
+    "body": 16,
+    "table": 14,
 }
 
 IMAGE_FONT_SIZES = {
-    "title": 26,
-    "heading": 24,
-    "body": 18,
-    "small": 16,
+    "title": 24,
+    "heading": 20,
+    "body": 16,
+    "small": 14,
 }
 
 
@@ -168,31 +168,31 @@ def to_summary_pdf_bytes(df, report_label, font_path=None):
         parent=styles["Title"],
         fontName=font_name,
         fontSize=PDF_FONT_SIZES["title"],
-        leading=32,
-        spaceAfter=8,
+        leading=28,
+        spaceAfter=5,
     )
     heading_style = ParagraphStyle(
         "ThaiHeading",
         parent=styles["Heading2"],
         fontName=font_name,
         fontSize=PDF_FONT_SIZES["heading"],
-        leading=30,
-        spaceBefore=6,
-        spaceAfter=8,
+        leading=24,
+        spaceBefore=4,
+        spaceAfter=5,
     )
     normal_style = ParagraphStyle(
         "ThaiNormal",
         parent=styles["Normal"],
         fontName=font_name,
         fontSize=PDF_FONT_SIZES["body"],
-        leading=24,
+        leading=19,
     )
     detail_style = ParagraphStyle(
         "ThaiDetail",
         parent=styles["Normal"],
         fontName=font_name,
         fontSize=PDF_FONT_SIZES["table"],
-        leading=22,
+        leading=17,
     )
 
     doc = SimpleDocTemplate(
@@ -206,7 +206,7 @@ def to_summary_pdf_bytes(df, report_label, font_path=None):
     story = [
         Paragraph("รายงานรถค้างอาคาร", title_style),
         Paragraph(report_label, normal_style),
-        Spacer(1, 0.35 * cm),
+        Spacer(1, 0.2 * cm),
     ]
 
     summary_rows = [
@@ -218,13 +218,13 @@ def to_summary_pdf_bytes(df, report_label, font_path=None):
         ["รถเกิน 7 วัน", str(_count_status(df, "เกิน 7 วัน"))],
     ]
     story.append(_build_pdf_table(summary_rows, font_name, [12 * cm, 4 * cm]))
-    story.append(Spacer(1, 0.45 * cm))
+    story.append(Spacer(1, 0.25 * cm))
 
     story.append(Paragraph("รายการรถ", heading_style))
-    story.append(Spacer(1, 0.2 * cm))
-    for _, row in df.head(20).iterrows():
+    story.append(Spacer(1, 0.1 * cm))
+    for _, row in df.iterrows():
         story.append(_build_pdf_vehicle_card(row, normal_style, detail_style))
-        story.append(Spacer(1, 0.18 * cm))
+        story.append(Spacer(1, 0.08 * cm))
 
     doc.build(story)
     return buffer.getvalue()
@@ -234,9 +234,9 @@ def to_summary_jpg_bytes(df, report_label, font_path=None):
     from PIL import Image, ImageDraw
 
     width = 1080
-    item_height = 116
-    item_count = min(len(df), 12)
-    height = 560 + (item_count * item_height)
+    item_height = 82
+    item_count = len(df)
+    height = 430 + (item_count * item_height)
     image = Image.new("RGB", (width, height), "white")
     draw = ImageDraw.Draw(image)
     title_font = _load_image_font(IMAGE_FONT_SIZES["title"], font_path)
@@ -245,11 +245,11 @@ def to_summary_jpg_bytes(df, report_label, font_path=None):
     small_font = _load_image_font(IMAGE_FONT_SIZES["small"], font_path)
 
     x = 56
-    y = 48
+    y = 38
     draw.text((x, y), "รายงานรถค้างอาคาร", fill="#17324d", font=title_font)
-    y += 44
+    y += 36
     draw.text((x, y), report_label, fill="#334155", font=body_font)
-    y += 54
+    y += 42
 
     summary = [
         ("จำนวนรถในรายงาน", len(df)),
@@ -259,7 +259,7 @@ def to_summary_jpg_bytes(df, report_label, font_path=None):
         ("รถเกิน 7 วัน", _count_status(df, "เกิน 7 วัน")),
     ]
     card_width = 462
-    card_height = 82
+    card_height = 62
     for index, (label, value) in enumerate(summary):
         card_x = x + (index % 2) * (card_width + 44)
         card_y = y + (index // 2) * (card_height + 16)
@@ -269,26 +269,26 @@ def to_summary_jpg_bytes(df, report_label, font_path=None):
             fill="#f1f5f9",
             outline="#cbd5e1",
         )
-        draw.text((card_x + 18, card_y + 13), label, fill="#475569", font=small_font)
-        draw.text((card_x + 18, card_y + 42), str(value), fill="#0f172a", font=heading_font)
-    y += 284
+        draw.text((card_x + 16, card_y + 9), label, fill="#475569", font=small_font)
+        draw.text((card_x + 16, card_y + 32), str(value), fill="#0f172a", font=heading_font)
+    y += 220
 
     draw.text((x, y), "รายการรถ", fill="#17324d", font=heading_font)
-    y += 42
+    y += 32
 
     card_width = width - (x * 2)
-    for row_index, (_, row) in enumerate(df.head(item_count).iterrows()):
+    for row_index, (_, row) in enumerate(df.iterrows()):
         fill = "#ffffff" if row_index % 2 == 0 else "#f8fafc"
         draw.rounded_rectangle(
-            (x, y, x + card_width, y + item_height - 12),
+            (x, y, x + card_width, y + item_height - 8),
             radius=10,
             fill=fill,
             outline="#d8e0e8",
         )
         first_line, second_line, third_line = _format_report_row_lines(row)
-        draw.text((x + 18, y + 15), _fit_text(draw, first_line, body_font, card_width - 36), fill="#0f172a", font=body_font)
-        draw.text((x + 18, y + 47), _fit_text(draw, second_line, small_font, card_width - 36), fill="#334155", font=small_font)
-        draw.text((x + 18, y + 76), _fit_text(draw, third_line, small_font, card_width - 36), fill="#475569", font=small_font)
+        draw.text((x + 16, y + 9), _fit_text(draw, first_line, body_font, card_width - 32), fill="#0f172a", font=body_font)
+        draw.text((x + 16, y + 34), _fit_text(draw, second_line, small_font, card_width - 32), fill="#334155", font=small_font)
+        draw.text((x + 16, y + 56), _fit_text(draw, third_line, small_font, card_width - 32), fill="#475569", font=small_font)
         y += item_height
 
     buffer = io.BytesIO()
