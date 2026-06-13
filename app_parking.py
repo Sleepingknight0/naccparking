@@ -8,7 +8,13 @@ import gspread
 from google.oauth2.service_account import Credentials
 import re
 from parking_analysis import summarize_long_parkers
-from report_generator import build_detailed_report, make_report_filename, to_csv_bytes
+from report_generator import (
+    build_detailed_report,
+    make_report_filename,
+    to_csv_bytes,
+    to_summary_jpg_bytes,
+    to_summary_pdf_bytes,
+)
 
 # การตั้งค่าหน้าจอเบื้องต้น
 st.set_page_config(
@@ -199,10 +205,10 @@ def save_buildings(buildings_list):
 buildings_list = load_buildings()
 
 def add_row_numbers(df):
-      display_df = df.reset_index(drop=True).copy()
-      display_df.insert(0, "ลำดับ", range(1, len(display_df) + 1))
-      return display_df
-    
+    display_df = df.reset_index(drop=True).copy()
+    display_df.insert(0, "ลำดับ", range(1, len(display_df) + 1))
+    return display_df
+
 # ----------------- ADMIN SETTINGS (SIDEBAR) -----------------
 st.sidebar.markdown("## 🛠️ ตั้งค่าผู้ดูแลระบบ (Admin)")
 st.sidebar.write("ส่วนสำหรับเพิ่ม/ลด รายชื่ออาคาร")
@@ -284,9 +290,24 @@ with st.sidebar.expander("📥 โหลดรีพอร์ต", expanded=Fals
                 mime="text/csv",
                 use_container_width=True,
             )
+            st.download_button(
+                "⬇️ ดาวน์โหลด PDF สรุป",
+                data=to_summary_pdf_bytes(report_df, report_df["ช่วงรายงาน"].iloc[0]),
+                file_name=make_report_filename(report_type, report_date, "pdf"),
+                mime="application/pdf",
+                use_container_width=True,
+            )
+            st.download_button(
+                "⬇️ ดาวน์โหลด JPG สรุป",
+                data=to_summary_jpg_bytes(report_df, report_df["ช่วงรายงาน"].iloc[0]),
+                file_name=make_report_filename(report_type, report_date, "jpg"),
+                mime="image/jpeg",
+                use_container_width=True,
+            )
     elif report_pwd != "":
         st.error("รหัสผ่านไม่ถูกต้อง")
-        
+
+
 # ----------------- MAIN APP -----------------
 if 'last_saved_plate' not in st.session_state:
     st.session_state.last_saved_plate = None
