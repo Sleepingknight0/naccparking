@@ -1,5 +1,5 @@
 import streamlit as st
-from datetime import datetime
+from datetime import date, datetime, timedelta
 import pandas as pd
 import os
 import toml
@@ -11,6 +11,7 @@ from parking_analysis import summarize_long_parkers
 from report_generator import (
     build_detailed_report,
     get_report_font_options,
+    get_report_period,
     make_report_filename,
     to_csv_bytes,
     to_summary_jpg_bytes,
@@ -210,6 +211,88 @@ def add_row_numbers(df):
     display_df.insert(0, "ลำดับ", range(1, len(display_df) + 1))
     return display_df
 
+THAI_MONTHS = [
+    (1, "มกราคม"),
+    (2, "กุมภาพันธ์"),
+    (3, "มีนาคม"),
+    (4, "เมษายน"),
+    (5, "พฤษภาคม"),
+    (6, "มิถุนายน"),
+    (7, "กรกฎาคม"),
+    (8, "สิงหาคม"),
+    (9, "กันยายน"),
+    (10, "ตุลาคม"),
+    (11, "พฤศจิกายน"),
+    (12, "ธันวาคม"),
+]
+
+def select_report_date(report_type):
+    today = datetime.now().date()
+
+    if report_type == "รายวัน":
+        return st.date_input("เลือกวันที่", value=today)
+
+    year_options = list(range(today.year - 3, today.year + 2))
+    month_labels = [label for _, label in THAI_MONTHS]
+
+    col_month, col_year = st.columns(2)
+    with col_month:
+        selected_month_label = st.selectbox(
+            "เลือกเดือน",
+            month_labels,
+            index=today.month - 1,
+            key=f"{report_type}_month",
+        )
+    with col_year:
+        selected_year = st.selectbox(
+            "เลือกปี",
+            year_options,
+            index=year_options.index(today.year),
+            key=f"{report_type}_year",
+        )
+
+    selected_month = dict((label, month) for month, label in THAI_MONTHS)[selected_month_label]
+
+    if report_type == "รายเดือน":
+        return date(selected_year, selected_month, 1)
+
+    week_options = build_week_options(selected_year, selected_month)
+    default_week_index = find_default_week_index(week_options, today)
+    selected_week = st.selectbox(
+        "เลือกสัปดาห์",
+        week_options,
+        index=default_week_index,
+        format_func=lambda week: week["label"],
+    )
+    return selected_week["start"]
+
+def build_week_options(year, month):
+    first_day = date(year, month, 1)
+    if month == 12:
+        last_day = date(year, 12, 31)
+    else:
+        last_day = date(year, month + 1, 1) - timedelta(days=1)
+
+    week_start = first_day - timedelta(days=first_day.weekday())
+    weeks = []
+    while week_start <= last_day:
+        week_end = week_start + timedelta(days=6)
+        weeks.append(
+            {
+                "start": week_start,
+                "end": week_end,
+                "label": f"{week_start:%d/%m/%Y} - {week_end:%d/%m/%Y}",
+            }
+        )
+        week_start += timedelta(days=7)
+    return weeks
+
+def find_default_week_index(week_options, selected_date):
+    for index, week in enumerate(week_options):
+        if week["start"] <= selected_date <= week["end"]:
+            return index
+    return 0
+
 # ----------------- ADMIN SETTINGS (SIDEBAR) -----------------
 st.sidebar.markdown("## 🛠️ ตั้งค่าผู้ดูแลระบบ (Admin)")
 st.sidebar.write("ส่วนสำหรับเพิ่ม/ลด รายชื่ออาคาร")
@@ -277,7 +360,9 @@ with st.sidebar.expander("📥 โหลดรีพอร์ต", expanded=Fals
     report_pwd = st.text_input("รหัสผ่านสำหรับโหลดรีพอร์ต:", type="password")
     if report_pwd == "1234":
         report_type = st.selectbox("ประเภทรายงาน", ["รายวัน", "รายสัปดาห์", "รายเดือน"])
-        report_date = st.date_input("เลือกวันที่", value=datetime.now().date())
+        report_date = select_report_date(report_type)
+        _, _, report_period_label = get_report_period(report_type, report_date)
+        st.caption(f"ช่วงรายงาน: {report_period_label}")
         report_font_options = get_report_font_options()
         report_font_label = st.selectbox("ฟอนต์รายงาน", list(report_font_options.keys()))
         report_font_path = report_font_options[report_font_label]

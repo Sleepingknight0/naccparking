@@ -1,7 +1,9 @@
 import calendar
 import datetime as dt
+import hashlib
 import html
 import io
+import math
 from pathlib import Path
 
 import pandas as pd
@@ -234,9 +236,12 @@ def to_summary_jpg_bytes(df, report_label, font_path=None):
     from PIL import Image, ImageDraw
 
     width = 1080
+    vehicle_columns = 3
+    column_gap = 14
     item_height = 82
     item_count = len(df)
-    height = 430 + (item_count * item_height)
+    vehicle_rows = max(1, math.ceil(item_count / vehicle_columns))
+    height = 430 + (vehicle_rows * item_height)
     image = Image.new("RGB", (width, height), "white")
     draw = ImageDraw.Draw(image)
     title_font = _load_image_font(IMAGE_FONT_SIZES["title"], font_path)
@@ -276,20 +281,23 @@ def to_summary_jpg_bytes(df, report_label, font_path=None):
     draw.text((x, y), "รายการรถ", fill="#17324d", font=heading_font)
     y += 32
 
-    card_width = width - (x * 2)
+    card_width = (width - (x * 2) - column_gap) // vehicle_columns
     for row_index, (_, row) in enumerate(df.iterrows()):
+        column_index = row_index % vehicle_columns
+        grid_row_index = row_index // vehicle_columns
+        card_x = x + column_index * (card_width + column_gap)
+        card_y = y + grid_row_index * item_height
         fill = "#ffffff" if row_index % 2 == 0 else "#f8fafc"
         draw.rounded_rectangle(
-            (x, y, x + card_width, y + item_height - 8),
+            (card_x, card_y, card_x + card_width, card_y + item_height - 8),
             radius=10,
             fill=fill,
             outline="#d8e0e8",
         )
         first_line, second_line, third_line = _format_report_row_lines(row)
-        draw.text((x + 16, y + 9), _fit_text(draw, first_line, body_font, card_width - 32), fill="#0f172a", font=body_font)
-        draw.text((x + 16, y + 34), _fit_text(draw, second_line, small_font, card_width - 32), fill="#334155", font=small_font)
-        draw.text((x + 16, y + 56), _fit_text(draw, third_line, small_font, card_width - 32), fill="#475569", font=small_font)
-        y += item_height
+        draw.text((card_x + 14, card_y + 7), _fit_text(draw, first_line, body_font, card_width - 28), fill="#0f172a", font=body_font)
+        draw.text((card_x + 14, card_y + 31), _fit_text(draw, second_line, small_font, card_width - 28), fill="#334155", font=small_font)
+        draw.text((card_x + 14, card_y + 52), _fit_text(draw, third_line, small_font, card_width - 28), fill="#475569", font=small_font)
 
     buffer = io.BytesIO()
     image.save(buffer, format="JPEG", quality=92)
@@ -414,17 +422,17 @@ def _build_pdf_vehicle_card(row, normal_style, detail_style):
 
 def _format_report_row_lines(row):
     first_line = (
-        f"{row.get('ลำดับ', '')}. ทะเบียน {row.get('ทะเบียนรถ', '')} "
-        f"จังหวัด {row.get('จังหวัด', '')}"
+        f"{row.get('ลำดับ', '')}. {row.get('ทะเบียนรถ', '')} | "
+        f"{row.get('จังหวัด', '')}"
     )
     second_line = (
-        f"อาคารล่าสุด: {row.get('อาคารล่าสุด', '')} | "
-        f"พบล่าสุด: {_format_date_value(row.get('วันที่พบล่าสุดในช่วง', ''))}"
+        f"อาคาร: {row.get('อาคารล่าสุด', '')} | "
+        f"ล่าสุด: {_format_date_value(row.get('วันที่พบล่าสุดในช่วง', ''))}"
     )
     third_line = (
-        f"วันในช่วง: {row.get('จำนวนวันที่พบในช่วง', '')} | "
-        f"รวมทั้งหมด: {row.get('จำนวนวันที่พบทั้งหมด', '')} | "
-        f"สถานะ: {row.get('สถานะ', '')}"
+        f"ช่วง: {row.get('จำนวนวันที่พบในช่วง', '')} | "
+        f"รวม: {row.get('จำนวนวันที่พบทั้งหมด', '')} | "
+        f"{row.get('สถานะ', '')}"
     )
     return first_line, second_line, third_line
 
@@ -482,8 +490,9 @@ def _register_pdf_font(font_path=None):
 
     for candidate in resolve_font_candidates(font_path):
         if candidate.exists():
-            pdfmetrics.registerFont(TTFont("ReportThai", str(candidate)))
-            return "ReportThai"
+            font_name = _pdf_font_name_for_path(candidate)
+            pdfmetrics.registerFont(TTFont(font_name, str(candidate)))
+            return font_name
     return "Helvetica"
 
 
@@ -503,3 +512,9 @@ def _font_label(font_path):
         "NotoSansThai-Regular": "Noto Sans Thai",
     }
     return known_labels.get(font_path.stem, font_path.stem)
+
+
+def _pdf_font_name_for_path(font_path):
+    font_path = Path(font_path)
+    digest = hashlib.md5(str(font_path).encode("utf-8")).hexdigest()[:10]
+    return f"ReportThai_{digest}"
