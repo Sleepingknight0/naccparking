@@ -1,5 +1,7 @@
 streamlit
 pandas
+pillow
 gspread
 google-auth
+reportlab
 toml
