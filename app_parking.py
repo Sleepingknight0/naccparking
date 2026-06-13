@@ -7,6 +7,7 @@ import json
 import gspread
 from google.oauth2.service_account import Credentials
 import re
+from parking_analysis import summarize_long_parkers
 
 # การตั้งค่าหน้าจอเบื้องต้น
 st.set_page_config(
@@ -244,14 +245,7 @@ with st.sidebar.expander("📊 ข้อมูลตาราง Google Sheets",
                 days_threshold = st.number_input("กรองเฉพาะรถที่จอดสะสมตั้งแต่ (วัน):", min_value=1, value=7, step=1)
                 
                 if not df_display.empty:
-                    # จัดกลุ่มตามทะเบียน จังหวัด และอาคารเพื่อนับจำนวนวัน
-                    summary = df_display.groupby(['ทะเบียนรถ', 'จังหวัด', 'อาคาร']).size().reset_index(name='จำนวนวันที่จอดสะสม (วัน)')
-                    
-                    # กรองเฉพาะที่จอดเกินวันที่กำหนด
-                    long_parkers = summary[summary['จำนวนวันที่จอดสะสม (วัน)'] >= days_threshold]
-                    
-                    # เรียงจากจอดนานสุดไปน้อยสุด
-                    long_parkers = long_parkers.sort_values(by='จำนวนวันที่จอดสะสม (วัน)', ascending=False).reset_index(drop=True)
+                    long_parkers = summarize_long_parkers(df_display, days_threshold)
                     
                     if not long_parkers.empty:
                         st.dataframe(long_parkers, use_container_width=True)
