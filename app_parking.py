@@ -8,6 +8,7 @@ import gspread
 from google.oauth2.service_account import Credentials
 import re
 from parking_analysis import summarize_long_parkers
+from report_generator import build_detailed_report, make_report_filename, to_csv_bytes
 
 # การตั้งค่าหน้าจอเบื้องต้น
 st.set_page_config(
@@ -264,7 +265,28 @@ with st.sidebar.expander("📊 ข้อมูลตาราง Google Sheets",
     elif admin_pwd != "":
         st.error("รหัสผ่านไม่ถูกต้อง")
 
+st.sidebar.markdown("---")
+with st.sidebar.expander("📥 โหลดรีพอร์ต", expanded=False):
+    report_pwd = st.text_input("รหัสผ่านสำหรับโหลดรีพอร์ต:", type="password")
+    if report_pwd == "1234":
+        report_type = st.selectbox("ประเภทรายงาน", ["รายวัน", "รายสัปดาห์", "รายเดือน"])
+        report_date = st.date_input("เลือกวันที่", value=datetime.now().date())
+        report_df = build_detailed_report(load_data(), report_type, report_date)
 
+        if report_df.empty:
+            st.info("ไม่พบข้อมูลในช่วงรายงานที่เลือก")
+        else:
+            st.caption(f"พบรถในรายงาน {len(report_df)} รายการ")
+            st.download_button(
+                "⬇️ ดาวน์โหลด CSV รายละเอียด",
+                data=to_csv_bytes(report_df),
+                file_name=make_report_filename(report_type, report_date, "csv"),
+                mime="text/csv",
+                use_container_width=True,
+            )
+    elif report_pwd != "":
+        st.error("รหัสผ่านไม่ถูกต้อง")
+        
 # ----------------- MAIN APP -----------------
 if 'last_saved_plate' not in st.session_state:
     st.session_state.last_saved_plate = None
