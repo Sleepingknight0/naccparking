@@ -69,6 +69,19 @@ IMAGE_FONT_SIZES = {
     "small": 14,
 }
 
+PARKING_LEVEL_STYLES = [
+    {"level": 1, "background": "#dcfce7", "border": "#86efac", "dot": "#16a34a"},
+    {"level": 2, "background": "#bbf7d0", "border": "#4ade80", "dot": "#22c55e"},
+    {"level": 3, "background": "#d9f99d", "border": "#a3e635", "dot": "#65a30d"},
+    {"level": 4, "background": "#fef9c3", "border": "#fde047", "dot": "#ca8a04"},
+    {"level": 5, "background": "#fed7aa", "border": "#fb923c", "dot": "#f97316"},
+    {"level": 6, "background": "#fdba74", "border": "#f97316", "dot": "#ea580c"},
+    {"level": 7, "background": "#fecaca", "border": "#f87171", "dot": "#ef4444"},
+    {"level": 8, "background": "#fca5a5", "border": "#ef4444", "dot": "#dc2626"},
+    {"level": 9, "background": "#f87171", "border": "#dc2626", "dot": "#b91c1c"},
+    {"level": 10, "background": "#fecaca", "border": "#b91c1c", "dot": "#dc2626"},
+]
+
 
 def get_report_period(report_type, selected_date):
     selected_date = _as_date(selected_date)
@@ -314,15 +327,19 @@ def to_summary_jpg_bytes(df, report_label, font_path=None, report_type=None):
         grid_row_index = row_index // vehicle_columns
         card_x = x + column_index * (card_width + column_gap)
         card_y = y + grid_row_index * item_height
-        fill = "#ffffff" if row_index % 2 == 0 else "#f8fafc"
+        level_style = _parking_level_style(row.get("จำนวนวันที่พบในช่วง", 0))
         draw.rounded_rectangle(
             (card_x, card_y, card_x + card_width, card_y + item_height - 8),
             radius=10,
-            fill=fill,
-            outline="#d8e0e8",
+            fill=level_style["background"],
+            outline=level_style["border"],
+        )
+        draw.ellipse(
+            (card_x + card_width - 26, card_y + 10, card_x + card_width - 12, card_y + 24),
+            fill=level_style["dot"],
         )
         first_line, second_line, third_line = _format_report_row_lines(row)
-        draw.text((card_x + 14, card_y + 7), _fit_text(draw, first_line, body_font, card_width - 28), fill="#0f172a", font=body_font)
+        draw.text((card_x + 14, card_y + 7), _fit_text(draw, first_line, body_font, card_width - 48), fill="#0f172a", font=body_font)
         draw.text((card_x + 14, card_y + 31), _fit_text(draw, second_line, small_font, card_width - 28), fill="#334155", font=small_font)
         draw.text((card_x + 14, card_y + 52), _fit_text(draw, third_line, small_font, card_width - 28), fill="#475569", font=small_font)
 
@@ -428,13 +445,23 @@ def _building_summary_rows(df):
     return [(building, int(count)) for building, count in counts.items()]
 
 
+def _parking_level_style(days):
+    try:
+        days = int(days)
+    except (TypeError, ValueError):
+        days = 1
+
+    level = max(1, min(10, days))
+    return PARKING_LEVEL_STYLES[level - 1]
+
+
 def _select_summary_rows(df, report_type):
     if report_type not in {"รายสัปดาห์", "รายเดือน"}:
         return df
 
     sort_columns = [
-        "จำนวนวันที่พบทั้งหมด",
         "จำนวนวันที่พบในช่วง",
+        "จำนวนวันที่พบทั้งหมด",
         "วันที่พบล่าสุดในช่วง",
     ]
     existing_sort_columns = [column for column in sort_columns if column in df.columns]
@@ -463,6 +490,7 @@ def _build_pdf_vehicle_card(row, normal_style, detail_style):
     from reportlab.platypus import Paragraph, Table, TableStyle
 
     first_line, second_line, third_line = _format_report_row_lines(row)
+    level_style = _parking_level_style(row.get("จำนวนวันที่พบในช่วง", 0))
     table = Table(
         [
             [Paragraph(_escape_pdf_text(first_line), normal_style)],
@@ -474,8 +502,8 @@ def _build_pdf_vehicle_card(row, normal_style, detail_style):
     table.setStyle(
         TableStyle(
             [
-                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f8fafc")),
-                ("BOX", (0, 0), (-1, -1), 0.4, colors.HexColor("#d8e0e8")),
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor(level_style["background"])),
+                ("BOX", (0, 0), (-1, -1), 0.6, colors.HexColor(level_style["border"])),
                 ("LEFTPADDING", (0, 0), (-1, -1), 8),
                 ("RIGHTPADDING", (0, 0), (-1, -1), 8),
                 ("TOPPADDING", (0, 0), (-1, -1), 5),
@@ -487,6 +515,7 @@ def _build_pdf_vehicle_card(row, normal_style, detail_style):
 
 
 def _format_report_row_lines(row):
+    level_style = _parking_level_style(row.get("จำนวนวันที่พบในช่วง", 0))
     first_line = (
         f"{row.get('ลำดับ', '')}. {row.get('ทะเบียนรถ', '')} | "
         f"{row.get('จังหวัด', '')}"
@@ -498,7 +527,7 @@ def _format_report_row_lines(row):
     third_line = (
         f"ช่วง: {row.get('จำนวนวันที่พบในช่วง', '')} | "
         f"รวม: {row.get('จำนวนวันที่พบทั้งหมด', '')} | "
-        f"{row.get('สถานะ', '')}"
+        f"ระดับ {level_style['level']}/10 | {row.get('สถานะ', '')}"
     )
     return first_line, second_line, third_line
 
