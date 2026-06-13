@@ -223,6 +223,15 @@ def to_summary_pdf_bytes(df, report_label, font_path=None, report_type=None):
     story.append(_build_pdf_table(summary_rows, font_name, [12 * cm, 4 * cm]))
     story.append(Spacer(1, 0.25 * cm))
 
+    building_rows = [["อาคาร", "จำนวนรถ"]]
+    building_rows.extend(
+        [[building, str(count)] for building, count in _building_summary_rows(df)]
+    )
+    story.append(Paragraph("จำนวนรถแยกตามอาคาร", heading_style))
+    story.append(Spacer(1, 0.1 * cm))
+    story.append(_build_pdf_table(building_rows, font_name, [12 * cm, 4 * cm]))
+    story.append(Spacer(1, 0.25 * cm))
+
     story.append(Paragraph(_summary_vehicle_heading(report_type), heading_style))
     story.append(Spacer(1, 0.1 * cm))
     for _, row in summary_df.iterrows():
@@ -243,7 +252,11 @@ def to_summary_jpg_bytes(df, report_label, font_path=None, report_type=None):
     item_height = 82
     item_count = len(summary_df)
     vehicle_rows = max(1, math.ceil(item_count / vehicle_columns))
-    height = 430 + (vehicle_rows * item_height)
+    building_summary_text = " | ".join(
+        f"{building}: {count}" for building, count in _building_summary_rows(df)
+    )
+    building_card_height = max(62, 30 + (math.ceil(max(1, len(building_summary_text)) / 70) * 22))
+    height = 486 + building_card_height + (vehicle_rows * item_height)
     image = Image.new("RGB", (width, height), "white")
     draw = ImageDraw.Draw(image)
     title_font = _load_image_font(IMAGE_FONT_SIZES["title"], font_path)
@@ -279,6 +292,18 @@ def to_summary_jpg_bytes(df, report_label, font_path=None, report_type=None):
         draw.text((card_x + 16, card_y + 9), label, fill="#475569", font=small_font)
         draw.text((card_x + 16, card_y + 32), str(value), fill="#0f172a", font=heading_font)
     y += 220
+
+    draw.text((x, y), "จำนวนรถแยกตามอาคาร", fill="#17324d", font=heading_font)
+    y += 32
+    draw.rounded_rectangle(
+        (x, y, width - x, y + building_card_height),
+        radius=12,
+        fill="#f8fafc",
+        outline="#cbd5e1",
+    )
+    for line_index, line in enumerate(_wrap_text_by_chars(building_summary_text, 70)):
+        draw.text((x + 16, y + 12 + (line_index * 22)), line, fill="#0f172a", font=small_font)
+    y += building_card_height + 24
 
     draw.text((x, y), _summary_vehicle_heading(report_type), fill="#17324d", font=heading_font)
     y += 32
@@ -393,6 +418,16 @@ def _count_status(df, status):
     return int((df["สถานะ"] == status).sum())
 
 
+def _building_summary_rows(df):
+    if "อาคารล่าสุด" not in df.columns:
+        return []
+
+    buildings = df["อาคารล่าสุด"].fillna("").astype(str).str.strip()
+    buildings = buildings.replace("", "ไม่ระบุอาคาร")
+    counts = buildings.value_counts()
+    return [(building, int(count)) for building, count in counts.items()]
+
+
 def _select_summary_rows(df, report_type):
     if report_type not in {"รายสัปดาห์", "รายเดือน"}:
         return df
@@ -487,6 +522,13 @@ def _fit_text(draw, text, font, max_width):
     while text and draw.textlength(text + ellipsis, font=font) > max_width:
         text = text[:-1]
     return text + ellipsis if text else ellipsis
+
+
+def _wrap_text_by_chars(text, max_chars):
+    text = str(text)
+    if not text:
+        return [""]
+    return [text[index : index + max_chars] for index in range(0, len(text), max_chars)]
 
 
 def _build_pdf_table(rows, font_name, column_widths):
