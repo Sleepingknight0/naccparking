@@ -197,6 +197,11 @@ def save_buildings(buildings_list):
 
 buildings_list = load_buildings()
 
+def add_row_numbers(df):
+      display_df = df.reset_index(drop=True).copy()
+      display_df.insert(0, "ลำดับ", range(1, len(display_df) + 1))
+      return display_df
+    
 # ----------------- ADMIN SETTINGS (SIDEBAR) -----------------
 st.sidebar.markdown("## 🛠️ ตั้งค่าผู้ดูแลระบบ (Admin)")
 st.sidebar.write("ส่วนสำหรับเพิ่ม/ลด รายชื่ออาคาร")
@@ -237,7 +242,7 @@ with st.sidebar.expander("📊 ข้อมูลตาราง Google Sheets",
 
                 df_today = df_display[df_display["วันที่ตรวจพบ"].astype(str) == current_date]
 
-                st.dataframe(df_today, use_container_width=True)
+                st.dataframe(add_row_numbers(df_today), use_container_width=True, hide_index=True)
                 st.success(f"โหลดข้อมูลประจำวันที่ {current_date} ทั้งหมด {len(df_today)} รายการ")
                 
             with tab2:
@@ -248,7 +253,7 @@ with st.sidebar.expander("📊 ข้อมูลตาราง Google Sheets",
                     long_parkers = summarize_long_parkers(df_display, days_threshold)
                     
                     if not long_parkers.empty:
-                        st.dataframe(long_parkers, use_container_width=True)
+                        st.dataframe(add_row_numbers(long_parkers), use_container_width=True, hide_index=True)
                         st.warning(f"พบรถที่จอดสะสม {days_threshold} วันขึ้นไป จำนวน {len(long_parkers)} คัน")
                     else:
                         st.success(f"ยังไม่พบรถที่จอดสะสมถึง {days_threshold} วัน 🎉")
