@@ -67,30 +67,24 @@ def render_home_mini_dashboard(
 ) -> None:
     _render_styles(is_dark)
     if error_message:
-        st.markdown(
-            """
-<div class="mini-dashboard-shell">
-  <div class="mini-dashboard-error">ไม่สามารถโหลดข้อมูลสรุปวันนี้ได้</div>
-</div>
-""",
-            unsafe_allow_html=True,
+        _render_html(
+            '<div class="mini-dashboard-shell">'
+            '<div class="mini-dashboard-error">ไม่สามารถโหลดข้อมูลสรุปวันนี้ได้</div>'
+            '</div>'
         )
         return
 
     cards = get_today_building_counts(df, buildings)
-    cards_html = "\n".join(_render_card(card) for card in cards)
-    st.markdown(
-        f"""
-<div class="mini-dashboard-shell">
-  <div class="mini-dashboard-title">สรุปยอดบันทึกวันนี้</div>
-  <div class="mini-dashboard-scroll" aria-label="สรุปยอดบันทึกรถวันนี้">
-    <div class="mini-dashboard-grid">
-      {cards_html}
-    </div>
-  </div>
-</div>
-""",
-        unsafe_allow_html=True,
+    cards_html = "".join(_render_card(card) for card in cards)
+    _render_html(
+        '<div class="mini-dashboard-shell">'
+        '<div class="mini-dashboard-title">สรุปยอดบันทึกวันนี้</div>'
+        '<div class="mini-dashboard-scroll" aria-label="สรุปยอดบันทึกรถวันนี้">'
+        '<div class="mini-dashboard-grid">'
+        f"{cards_html}"
+        "</div>"
+        "</div>"
+        "</div>"
     )
 
 
@@ -100,16 +94,23 @@ def _render_card(card: dict[str, object]) -> str:
     kind = html.escape(str(card["kind"]))
     subtitle = "รายการวันนี้ทั้งหมด" if kind == "total" else "รายการวันนี้"
     icon = "∑" if kind == "total" else "▦"
-    return f"""
-<div class="mini-stat-card mini-stat-card--{kind}">
-  <div class="mini-stat-top">
-    <span class="mini-stat-icon">{icon}</span>
-    <span class="mini-stat-label">{label}</span>
-  </div>
-  <div class="mini-stat-value">{count}</div>
-  <div class="mini-stat-subtitle">{subtitle}</div>
-</div>
-"""
+    return (
+        f'<div class="mini-stat-card mini-stat-card--{kind}">'
+        '<div class="mini-stat-top">'
+        f'<span class="mini-stat-icon">{icon}</span>'
+        f'<span class="mini-stat-label">{label}</span>'
+        "</div>"
+        f'<div class="mini-stat-value">{count}</div>'
+        f'<div class="mini-stat-subtitle">{subtitle}</div>'
+        "</div>"
+    )
+
+
+def _render_html(markup: str) -> None:
+    if hasattr(st, "html"):
+        st.html(markup)
+    else:
+        st.markdown(markup, unsafe_allow_html=True)
 
 
 def _render_styles(is_dark: bool) -> None:
