@@ -4,7 +4,8 @@ import pandas as pd
 import streamlit as st
 
 from dashboard import components
-from dashboard.data_service import DERIVED_COLUMNS, clear_dashboard_cache, to_csv_bytes, to_excel_bytes
+from dashboard.data_service import clear_dashboard_cache, to_csv_bytes, to_excel_bytes
+from dashboard.display import prepare_display_dataframe
 from dashboard.metrics import filter_dataframe
 
 
@@ -25,16 +26,32 @@ def render(df: pd.DataFrame) -> None:
 
     search = st.text_input("ค้นหาในตาราง", placeholder="ค้นทะเบียน อาคาร จังหวัด หรือข้อความอื่น", key="raw_search")
     filtered = filter_dataframe(filtered, search_text=search)
-    show_derived = st.toggle("แสดง column ที่ระบบคำนวณเพิ่ม", value=False, key="raw_show_derived")
+    show_system_cols = st.toggle(
+        "แสดงคอลัมน์ระบบ/คอลัมน์ที่คำนวณเพิ่ม",
+        value=False,
+        key="raw_show_system_cols",
+    )
 
-    display_df = _display_columns(filtered, show_derived)
+    display_df = prepare_display_dataframe(filtered, include_system_columns=show_system_cols)
     st.caption(f"จำนวน row หลัง filter: {len(display_df):,}")
-    st.dataframe(display_df, use_container_width=True, hide_index=True)
+    st.dataframe(
+        display_df,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "วันที่": st.column_config.TextColumn("วันที่"),
+            "ทะเบียนรถ": st.column_config.TextColumn("ทะเบียนรถ"),
+            "จังหวัด": st.column_config.TextColumn("จังหวัด"),
+            "อาคาร": st.column_config.TextColumn("อาคาร"),
+            "สถานะค้างคืน": st.column_config.TextColumn("สถานะค้างคืน"),
+            "เหตุผลค้างคืน": st.column_config.TextColumn("เหตุผลค้างคืน"),
+        },
+    )
 
     col_csv, col_excel = st.columns(2)
     with col_csv:
         st.download_button(
-            "Download CSV",
+            "ดาวน์โหลด CSV",
             data=to_csv_bytes(display_df),
             file_name="naccparking-dashboard.csv",
             mime="text/csv",
@@ -44,7 +61,7 @@ def render(df: pd.DataFrame) -> None:
         try:
             excel_bytes = to_excel_bytes(display_df)
             st.download_button(
-                "Download Excel",
+                "ดาวน์โหลด Excel",
                 data=excel_bytes,
                 file_name="naccparking-dashboard.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -52,11 +69,3 @@ def render(df: pd.DataFrame) -> None:
             )
         except Exception as exc:
             st.warning(f"ยังไม่สามารถสร้าง Excel ได้: {exc}")
-
-
-def _display_columns(df: pd.DataFrame, show_derived: bool) -> pd.DataFrame:
-    if show_derived:
-        return df
-    derived_set = set(DERIVED_COLUMNS + ["next_gap_days"])
-    columns = [column for column in df.columns if column not in derived_set]
-    return df[columns]

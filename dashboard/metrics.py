@@ -15,6 +15,15 @@ from dashboard.data_service import (
 )
 
 
+BUILDING_SUMMARY_COLUMNS = [
+    "อาคาร",
+    "จำนวนรายการ",
+    "จำนวนทะเบียนไม่ซ้ำ",
+    "จำนวนรถค้างคืน",
+    "คิดเป็นสัดส่วน",
+]
+
+
 THAI_MONTHS = [
     (1, "มกราคม"),
     (2, "กุมภาพันธ์"),
@@ -137,20 +146,67 @@ def building_day_matrix(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def summarize_by_building(df: pd.DataFrame) -> pd.DataFrame:
-    if df.empty:
-        return pd.DataFrame(columns=[BUILDING_COL, "จำนวนรายการ", "ทะเบียนไม่ซ้ำ", "รถค้างคืน"])
-    summary = (
-        df.groupby(BUILDING_COL)
-        .agg(
-            จำนวนรายการ=(PLATE_COL, "count"),
-            ทะเบียนไม่ซ้ำ=(NORMALIZED_PLATE_COL, "nunique"),
-            รถค้างคืน=(OVERNIGHT_COL, "sum"),
-        )
-        .reset_index()
-        .sort_values("จำนวนรายการ", ascending=False)
+    if df is None or df.empty:
+        return pd.DataFrame(columns=BUILDING_SUMMARY_COLUMNS)
+
+    work = df.copy()
+    building_col = find_existing_column(work, [BUILDING_COL, "building", "สถานที่", "location", "building_name"])
+    plate_col = find_existing_column(work, [NORMALIZED_PLATE_COL, PLATE_COL, "plate", "license_plate", "vehicle_key"])
+    overnight_col = find_existing_column(work, [OVERNIGHT_COL, "ค้างคืน", "overnight"])
+
+    if building_col is None:
+        work["_display_building"] = "ไม่ระบุอาคาร"
+        building_col = "_display_building"
+    else:
+        work[building_col] = work[building_col].fillna("ไม่ระบุอาคาร").astype(str).str.strip()
+        work.loc[work[building_col].eq(""), building_col] = "ไม่ระบุอาคาร"
+
+    grouped = work.groupby(building_col, dropna=False)
+    result = grouped.size().reset_index(name="จำนวนรายการ")
+    result = result.rename(columns={building_col: "อาคาร"})
+
+    if plate_col and plate_col in work.columns:
+        unique_plate = grouped[plate_col].nunique().reset_index(name="จำนวนทะเบียนไม่ซ้ำ")
+        unique_plate = unique_plate.rename(columns={building_col: "อาคาร"})
+        result = result.merge(unique_plate, on="อาคาร", how="left")
+    else:
+        result["จำนวนทะเบียนไม่ซ้ำ"] = 0
+
+    if overnight_col and overnight_col in work.columns:
+        overnight = grouped[overnight_col].sum().reset_index(name="จำนวนรถค้างคืน")
+        overnight = overnight.rename(columns={building_col: "อาคาร"})
+        result = result.merge(overnight, on="อาคาร", how="left")
+    else:
+        result["จำนวนรถค้างคืน"] = 0
+
+    for column in ["จำนวนรายการ", "จำนวนทะเบียนไม่ซ้ำ", "จำนวนรถค้างคืน"]:
+        if column not in result.columns:
+            result[column] = 0
+        result[column] = pd.to_numeric(result[column], errors="coerce").fillna(0).astype(int)
+
+    total = int(result["จำนวนรายการ"].sum())
+    result["คิดเป็นสัดส่วน"] = result["จำนวนรายการ"].apply(
+        lambda value: f"{(value / total * 100):.1f}%" if total else "0.0%"
     )
-    summary["รถค้างคืน"] = summary["รถค้างคืน"].astype(int)
-    return summary
+
+    return (
+        result[BUILDING_SUMMARY_COLUMNS]
+        .sort_values("จำนวนรายการ", ascending=False, kind="stable")
+        .reset_index(drop=True)
+    )
+
+
+def find_existing_column(df: pd.DataFrame, candidates: list[str]) -> str | None:
+    lookup = {_normalize_column_name(column): column for column in df.columns}
+    for candidate in candidates:
+        normalized = _normalize_column_name(candidate)
+        if normalized in lookup:
+            return lookup[normalized]
+    return None
+
+
+def _normalize_column_name(value: object) -> str:
+    return str(value).strip().lower().replace("_", "").replace("-", "").replace(" ", "")
 
 
 def build_week_options(year: int, month: int) -> list[dict[str, object]]:
@@ -227,4 +283,3 @@ def vehicle_profile(df: pd.DataFrame, plate: str) -> tuple[dict[str, object], pd
         "overnight_days": int(history[history[OVERNIGHT_COL] == True][DATE_COL].nunique()),
     }
     return profile, history
-

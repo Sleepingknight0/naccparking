@@ -14,7 +14,8 @@ from dashboard.data_service import (
     normalize_plate,
     prepare_dashboard_dataframe,
 )
-from dashboard.metrics import build_week_options, compute_kpis, filter_dataframe
+from dashboard.display import prepare_display_dataframe
+from dashboard.metrics import build_week_options, compute_kpis, filter_dataframe, summarize_by_building
 
 
 class DashboardDataServiceTests(unittest.TestCase):
@@ -101,6 +102,69 @@ class DashboardMetricsTests(unittest.TestCase):
         self.assertEqual(weeks[0]["start"], date(2026, 6, 1))
         self.assertEqual(weeks[-1]["end"], date(2026, 6, 30))
         self.assertTrue(all(week["start"].month == 6 or week["end"].month == 6 for week in weeks))
+
+    def test_summarize_by_building_returns_stable_schema_when_columns_are_missing(self):
+        partial = pd.DataFrame({"ทะเบียนรถ": ["กก 1234", "ขข 8888"]})
+
+        summary = summarize_by_building(partial)
+
+        self.assertEqual(
+            summary.columns.tolist(),
+            ["อาคาร", "จำนวนรายการ", "จำนวนทะเบียนไม่ซ้ำ", "จำนวนรถค้างคืน", "คิดเป็นสัดส่วน"],
+        )
+        self.assertEqual(summary.loc[0, "อาคาร"], "ไม่ระบุอาคาร")
+        self.assertEqual(summary.loc[0, "จำนวนรายการ"], 2)
+        self.assertEqual(summary.loc[0, "จำนวนรถค้างคืน"], 0)
+        self.assertEqual(summary.loc[0, "คิดเป็นสัดส่วน"], "100.0%")
+
+    def test_summarize_by_building_empty_frame_keeps_stable_schema(self):
+        summary = summarize_by_building(pd.DataFrame())
+
+        self.assertEqual(
+            summary.columns.tolist(),
+            ["อาคาร", "จำนวนรายการ", "จำนวนทะเบียนไม่ซ้ำ", "จำนวนรถค้างคืน", "คิดเป็นสัดส่วน"],
+        )
+        self.assertTrue(summary.empty)
+
+
+class DashboardDisplayTests(unittest.TestCase):
+    def test_prepare_display_dataframe_uses_thai_headers_and_hides_system_columns_by_default(self):
+        raw = pd.DataFrame(
+            {
+                DATE_COL: ["2026-06-12", "2026-06-13"],
+                BUILDING_COL: ["อาคาร 4", "อาคาร 4"],
+                PLATE_COL: ["กก 1234", "กก 1234"],
+                PROVINCE_COL: ["กรุงเทพมหานคร", "กรุงเทพมหานคร"],
+            }
+        )
+        prepared = prepare_dashboard_dataframe(raw)
+
+        display_df = prepare_display_dataframe(prepared, include_system_columns=False)
+
+        self.assertIn("วันที่", display_df.columns)
+        self.assertIn("ทะเบียนรถ", display_df.columns)
+        self.assertIn("สถานะค้างคืน", display_df.columns)
+        self.assertIn("เหตุผลค้างคืน", display_df.columns)
+        self.assertNotIn("normalized_plate", display_df.columns)
+        self.assertNotIn("record_datetime", display_df.columns)
+        self.assertNotIn("year_month", display_df.columns)
+
+    def test_prepare_display_dataframe_appends_thai_system_columns_when_enabled(self):
+        raw = pd.DataFrame(
+            {
+                DATE_COL: ["2026-06-12"],
+                BUILDING_COL: ["อาคาร 4"],
+                PLATE_COL: ["กก 1234"],
+                PROVINCE_COL: ["กรุงเทพมหานคร"],
+            }
+        )
+        prepared = prepare_dashboard_dataframe(raw)
+
+        display_df = prepare_display_dataframe(prepared, include_system_columns=True)
+
+        self.assertIn("ทะเบียนรถมาตรฐาน", display_df.columns)
+        self.assertIn("รหัสรถ", display_df.columns)
+        self.assertIn("วันที่/เวลาบันทึก", display_df.columns)
 
 
 if __name__ == "__main__":

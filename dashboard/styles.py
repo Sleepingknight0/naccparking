@@ -77,15 +77,33 @@ def apply_dashboard_styles(is_dark: bool = True) -> None:
     }}
 
     [data-testid="stSidebar"] button {{
-        background: rgba(0,209,255,0.10) !important;
-        border: 1px solid rgba(0,209,255,0.28) !important;
+        background: rgba(44, 83, 100, 0.12) !important;
+        border: 1px solid rgba(255,255,255,0.14) !important;
         color: var(--dash-text) !important;
         border-radius: 8px !important;
     }}
 
     [data-testid="stSidebar"] button:hover {{
-        background: rgba(0,209,255,0.18) !important;
-        border-color: rgba(0,209,255,0.42) !important;
+        background: rgba(44, 83, 100, 0.22) !important;
+        border-color: rgba(0,209,255,0.35) !important;
+    }}
+
+    [data-testid="stSidebar"] a {{
+        border-radius: 8px;
+    }}
+
+    [data-testid="stSidebar"] a[href] {{
+        display: block;
+        padding: 0.48rem 0.7rem !important;
+        margin: 0.1rem 0 0.25rem;
+        background: rgba(44, 83, 100, 0.12) !important;
+        border: 1px solid rgba(255,255,255,0.14) !important;
+        text-decoration: none !important;
+    }}
+
+    [data-testid="stSidebar"] a[href]:hover {{
+        background: rgba(44, 83, 100, 0.22) !important;
+        border-color: rgba(0,209,255,0.35) !important;
     }}
 
     [data-testid="stHeader"] {{

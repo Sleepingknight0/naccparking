@@ -4,6 +4,7 @@ import streamlit as st
 
 from dashboard import components
 from dashboard.data_service import BUILDING_COL, DATE_COL, PROVINCE_COL, clear_dashboard_cache
+from dashboard.display import prepare_display_dataframe
 from dashboard.metrics import building_day_matrix, daily_counts, filter_dataframe, top_counts
 
 
@@ -57,5 +58,4 @@ def render(df) -> None:
 
     components.section_title("รายการล่าสุด 20 รายการ")
     latest = filtered.sort_values(DATE_COL, ascending=False).head(20)
-    st.dataframe(latest, use_container_width=True, hide_index=True)
-
+    st.dataframe(prepare_display_dataframe(latest), use_container_width=True, hide_index=True)

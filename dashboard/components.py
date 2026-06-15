@@ -27,7 +27,7 @@ def render_hero(title: str, subtitle: str, loaded_at) -> None:
 
 def render_error(message: str) -> None:
     st.markdown(
-        f'<div class="dash-error">ไม่สามารถโหลดข้อมูล Dashboard ได้: {message}</div>',
+        f'<div class="dash-error">ไม่สามารถโหลดข้อมูลแดชบอร์ดได้: {message}</div>',
         unsafe_allow_html=True,
     )
 
@@ -44,7 +44,7 @@ def render_kpi_cards(df: pd.DataFrame) -> None:
     kpis = compute_kpis(df)
     cards = [
         ("จำนวนรายการทั้งหมด", f"{kpis['total_records']:,}", "รายการหลังกรอง"),
-        ("ทะเบียนรถไม่ซ้ำ", f"{kpis['unique_vehicles']:,}", "นับจากทะเบียน normalized"),
+        ("ทะเบียนรถไม่ซ้ำ", f"{kpis['unique_vehicles']:,}", "นับจากทะเบียนมาตรฐาน"),
         ("อาคารที่มีข้อมูล", f"{kpis['building_count']:,}", "อาคารไม่ซ้ำ"),
         ("รายการเข้าข่ายค้างคืน", f"{kpis['overnight_count']:,}", f"{kpis['overnight_vehicle_count']:,} ทะเบียน"),
         (
@@ -102,7 +102,7 @@ def render_filter_bar(df: pd.DataFrame, key_prefix: str) -> dict[str, object]:
         )
     with col_refresh:
         st.write("")
-        refresh = st.button("Refresh", key=f"{key_prefix}_refresh", use_container_width=True)
+        refresh = st.button("รีเฟรช", key=f"{key_prefix}_refresh", use_container_width=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
     selected_year = None
@@ -156,4 +156,3 @@ def _format_date(value: object) -> str:
     if isinstance(value, date):
         return value.strftime("%d/%m/%Y")
     return "-" if value is None else str(value)
-

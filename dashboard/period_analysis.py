@@ -7,6 +7,7 @@ import streamlit as st
 
 from dashboard import components
 from dashboard.data_service import BUILDING_COL, DATE_COL, NORMALIZED_PLATE_COL, PROVINCE_COL
+from dashboard.display import prepare_display_dataframe
 from dashboard.metrics import (
     build_week_options,
     daily_counts,
@@ -17,13 +18,27 @@ from dashboard.metrics import (
 
 
 def render(df: pd.DataFrame) -> None:
-    daily_tab, weekly_tab, monthly_tab = st.tabs(["รายวัน", "รายสัปดาห์", "รายเดือน"])
+    mode_options = ["รายวัน", "รายสัปดาห์", "รายเดือน"]
+    if hasattr(st, "segmented_control"):
+        mode = st.segmented_control(
+            "เลือกรูปแบบการวิเคราะห์",
+            options=mode_options,
+            default="รายวัน",
+            key="period_mode",
+        )
+    else:
+        mode = st.radio(
+            "เลือกรูปแบบการวิเคราะห์",
+            options=mode_options,
+            horizontal=True,
+            key="period_mode",
+        )
 
-    with daily_tab:
+    if mode == "รายวัน":
         _render_daily(df)
-    with weekly_tab:
+    elif mode == "รายสัปดาห์":
         _render_weekly(df)
-    with monthly_tab:
+    else:
         _render_monthly(df)
 
 
@@ -61,7 +76,7 @@ def _render_daily(df: pd.DataFrame) -> None:
             components.render_empty("ไม่มีคอลัมน์เวลาในข้อมูลชุดนี้")
 
     components.section_title("รายการรถทั้งหมดของวันนั้น")
-    st.dataframe(day_df, use_container_width=True, hide_index=True)
+    st.dataframe(prepare_display_dataframe(day_df), use_container_width=True, hide_index=True)
 
 
 def _render_weekly(df: pd.DataFrame) -> None:
@@ -97,14 +112,18 @@ def _render_weekly(df: pd.DataFrame) -> None:
         st.dataframe(top_counts(week_df, PROVINCE_COL, 10), use_container_width=True, hide_index=True)
     with col_plate:
         components.section_title("ทะเบียนที่พบซ้ำ")
-        repeats = (
-            week_df.groupby(NORMALIZED_PLATE_COL)
-            .size()
-            .reset_index(name="จำนวนครั้ง")
-            .sort_values("จำนวนครั้ง", ascending=False)
-            .head(10)
-        )
-        st.dataframe(repeats, use_container_width=True, hide_index=True)
+        if NORMALIZED_PLATE_COL not in week_df.columns:
+            components.render_empty("ไม่มีข้อมูลทะเบียนสำหรับสรุป")
+        else:
+            repeats = (
+                week_df.groupby(NORMALIZED_PLATE_COL)
+                .size()
+                .reset_index(name="จำนวนครั้ง")
+                .sort_values("จำนวนครั้ง", ascending=False)
+                .head(10)
+                .rename(columns={NORMALIZED_PLATE_COL: "ทะเบียนรถมาตรฐาน"})
+            )
+            st.dataframe(repeats, use_container_width=True, hide_index=True)
 
 
 def _render_monthly(df: pd.DataFrame) -> None:
@@ -128,5 +147,8 @@ def _render_monthly(df: pd.DataFrame) -> None:
         st.bar_chart(top_counts(month_df, PROVINCE_COL, 10).set_index(PROVINCE_COL), height=280)
 
     components.section_title("ตารางสรุปตามอาคาร")
-    st.dataframe(summarize_by_building(month_df), use_container_width=True, hide_index=True)
-
+    summary_df = summarize_by_building(month_df)
+    if summary_df.empty:
+        components.render_empty("ไม่พบข้อมูลสำหรับสรุปตามอาคาร")
+    else:
+        st.dataframe(summary_df, use_container_width=True, hide_index=True)

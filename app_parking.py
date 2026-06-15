@@ -126,6 +126,21 @@ st.markdown("""
         padding: 0.5rem 1rem;
         transition: all 0.3s ease;
     }
+
+    section[data-testid="stSidebar"] a[href*="dashboard"] {
+        border: 1px solid rgba(44, 83, 100, 0.35);
+        border-radius: 8px;
+        padding: 0.45rem 0.65rem;
+        background: rgba(44, 83, 100, 0.08);
+        text-decoration: none;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+
+    section[data-testid="stSidebar"] a[href*="dashboard"]:hover {
+        background: rgba(44, 83, 100, 0.16);
+        border-color: rgba(44, 83, 100, 0.55);
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -356,14 +371,14 @@ with st.sidebar.expander("📊 ข้อมูลตาราง Google Sheets",
         st.error("รหัสผ่านไม่ถูกต้อง")
 
 st.sidebar.markdown("---")
-st.sidebar.markdown("### Analytics")
+st.sidebar.markdown("### 📈 รายงานและแดชบอร์ด")
 if hasattr(st.sidebar, "page_link"):
-    st.sidebar.page_link("pages/dashboard.py", label="Dashboard")
+    st.sidebar.page_link("pages/dashboard.py", label="› 📈 แดชบอร์ดภาพรวม")
 elif hasattr(st, "switch_page"):
-    if st.sidebar.button("Dashboard", use_container_width=True):
+    if st.sidebar.button("› 📈 แดชบอร์ดภาพรวม", use_container_width=True):
         st.switch_page("pages/dashboard.py")
 else:
-    st.sidebar.caption("เปิด Dashboard จากเมนู Pages ของ Streamlit")
+    st.sidebar.caption("เปิดแดชบอร์ดจากเมนู Pages ของ Streamlit")
 
 st.sidebar.markdown("---")
 with st.sidebar.expander("📥 โหลดรีพอร์ต", expanded=False):

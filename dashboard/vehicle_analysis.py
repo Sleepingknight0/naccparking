@@ -12,6 +12,7 @@ from dashboard.data_service import (
     PLATE_COL,
     PROVINCE_COL,
 )
+from dashboard.display import prepare_display_dataframe
 from dashboard.metrics import vehicle_options, vehicle_profile
 
 
@@ -37,15 +38,14 @@ def render(df: pd.DataFrame) -> None:
     _render_timeline(history)
 
     components.section_title("ประวัติการจอด")
-    st.dataframe(history, use_container_width=True, hide_index=True)
+    st.dataframe(prepare_display_dataframe(history), use_container_width=True, hide_index=True)
 
     components.section_title("วันที่เข้าข่ายจอดค้าง")
     overnight = history[history[OVERNIGHT_COL] == True]
     if overnight.empty:
         components.render_empty("ยังไม่พบวันที่เข้าข่ายจอดค้าง")
     else:
-        columns = [DATE_COL, BUILDING_COL, PROVINCE_COL, OVERNIGHT_REASON_COL]
-        st.dataframe(overnight[columns], use_container_width=True, hide_index=True)
+        st.dataframe(prepare_display_dataframe(overnight), use_container_width=True, hide_index=True)
 
 
 def _render_profile(profile: dict[str, object]) -> None:
@@ -91,4 +91,3 @@ def _render_timeline(history: pd.DataFrame) -> None:
 
 def _format_date(value: object) -> str:
     return value.strftime("%d/%m/%Y") if hasattr(value, "strftime") else str(value)
-
