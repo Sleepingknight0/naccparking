@@ -82,7 +82,6 @@ def render_filter_bar(df: pd.DataFrame, key_prefix: str) -> dict[str, object]:
     months = month_options(df)
     month_labels = ["ทั้งหมด"] + [label for _, _, label in months]
 
-    st.markdown('<div class="dash-panel">', unsafe_allow_html=True)
     col_building, col_province, col_month, col_range, col_refresh = st.columns([1.25, 1.1, 1, 1.35, 0.75])
     with col_building:
         buildings = st.multiselect("อาคาร", building_options, key=f"{key_prefix}_buildings")
@@ -103,7 +102,6 @@ def render_filter_bar(df: pd.DataFrame, key_prefix: str) -> dict[str, object]:
     with col_refresh:
         st.write("")
         refresh = st.button("รีเฟรช", key=f"{key_prefix}_refresh", use_container_width=True)
-    st.markdown("</div>", unsafe_allow_html=True)
 
     selected_year = None
     selected_month = None

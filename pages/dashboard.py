@@ -50,7 +50,6 @@ selected_page = st.sidebar.radio(
     ],
 )
 
-st.markdown('<div class="dashboard-shell">', unsafe_allow_html=True)
 result = get_dashboard_data()
 components.render_hero(
     "แดชบอร์ดรถค้างอาคาร",
@@ -71,5 +70,3 @@ else:
         _render_section("ไม่สามารถแสดงผลวิเคราะห์รายคันได้", vehicle_analysis.render, result.prepared)
     else:
         _render_section("ไม่สามารถแสดงผลตารางข้อมูลดิบได้", raw_data.render, result.prepared)
-
-st.markdown("</div>", unsafe_allow_html=True)
