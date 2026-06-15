@@ -218,6 +218,8 @@ class HomeSummaryTests(unittest.TestCase):
 
         self.assertNotIn("\n", markup)
         self.assertNotIn("    </div>", markup)
+        self.assertNotIn("mini-dashboard-scroll", markup)
+        self.assertIn("mini-dashboard-wrap", markup)
         self.assertEqual(markup.count('class="mini-stat-card'), 6)
 
 

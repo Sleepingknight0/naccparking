@@ -83,7 +83,7 @@ def _build_dashboard_markup(cards: list[dict[str, object]]) -> str:
     return (
         '<div class="mini-dashboard-shell">'
         '<div class="mini-dashboard-title">สรุปยอดบันทึกวันนี้</div>'
-        '<div class="mini-dashboard-scroll" aria-label="สรุปยอดบันทึกรถวันนี้">'
+        '<div class="mini-dashboard-wrap" aria-label="สรุปยอดบันทึกรถวันนี้">'
         '<div class="mini-dashboard-grid">'
         f"{cards_html}"
         "</div>"
@@ -96,13 +96,13 @@ def _render_card(card: dict[str, object]) -> str:
     label = html.escape(str(card["label"]))
     count = html.escape(f"{int(card['count']):,}")
     kind = html.escape(str(card["kind"]))
-    subtitle = "รายการวันนี้ทั้งหมด" if kind == "total" else "รายการวันนี้"
+    subtitle = "รวมวันนี้" if kind == "total" else "รายการวันนี้"
     icon = "∑" if kind == "total" else "▦"
     return (
         f'<div class="mini-stat-card mini-stat-card--{kind}">'
         '<div class="mini-stat-top">'
         f'<span class="mini-stat-icon">{icon}</span>'
-        f'<span class="mini-stat-label">{label}</span>'
+        f'<span class="mini-stat-title">{label}</span>'
         "</div>"
         f'<div class="mini-stat-value">{count}</div>'
         f'<div class="mini-stat-subtitle">{subtitle}</div>'
@@ -151,28 +151,33 @@ def _render_styles(is_dark: bool) -> None:
     margin: 0 0 0.55rem;
   }}
 
-  .mini-dashboard-scroll {{
+  .mini-dashboard-wrap {{
     width: 100%;
-    overflow-x: auto;
-    padding-bottom: 0.15rem;
+    max-width: 100%;
+    overflow-x: hidden;
+    box-sizing: border-box;
   }}
 
   .mini-dashboard-grid {{
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px;
-    min-width: 680px;
+    gap: clamp(4px, 1.5vw, 10px);
     width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
   }}
 
   .mini-stat-card {{
-    min-height: 112px;
+    min-width: 0;
+    width: 100%;
+    min-height: clamp(82px, 24vw, 112px);
     box-sizing: border-box;
-    border-radius: 10px;
+    border-radius: clamp(8px, 2vw, 14px);
     border: 1px solid {card_border};
     background: {card_bg};
     box-shadow: {shadow};
-    padding: 0.8rem 0.9rem;
+    padding: clamp(8px, 2.2vw, 18px);
+    overflow: hidden;
   }}
 
   .mini-stat-card--total {{
@@ -183,7 +188,7 @@ def _render_styles(is_dark: bool) -> None:
   .mini-stat-top {{
     display: flex;
     align-items: center;
-    gap: 0.45rem;
+    gap: clamp(3px, 1vw, 7px);
     min-width: 0;
   }}
 
@@ -191,36 +196,42 @@ def _render_styles(is_dark: bool) -> None:
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 1.35rem;
-    height: 1.35rem;
+    width: clamp(18px, 5vw, 28px);
+    height: clamp(18px, 5vw, 28px);
     border-radius: 6px;
     color: #2c5364;
     background: rgba(44, 83, 100, 0.12);
-    font-size: 0.86rem;
+    font-size: clamp(11px, 3vw, 16px);
     flex: 0 0 auto;
   }}
 
-  .mini-stat-label {{
+  .mini-stat-title {{
     color: {text_secondary};
-    font-size: clamp(0.74rem, 1.35vw, 0.88rem);
+    font-size: clamp(10px, 2.6vw, 14px);
+    line-height: 1.25;
     font-weight: 500;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    min-width: 0;
   }}
 
   .mini-stat-value {{
     color: {text_primary};
-    font-size: clamp(1.65rem, 3vw, 2.2rem);
+    font-size: clamp(20px, 6vw, 34px);
     line-height: 1.05;
-    font-weight: 700;
-    margin-top: 0.55rem;
+    font-weight: 800;
+    margin-top: clamp(6px, 1.4vw, 10px);
   }}
 
   .mini-stat-subtitle {{
     color: {text_secondary};
-    font-size: 0.78rem;
-    margin-top: 0.2rem;
+    font-size: clamp(9px, 2.4vw, 13px);
+    line-height: 1.2;
+    margin-top: clamp(2px, 0.7vw, 4px);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }}
 
   .mini-dashboard-error {{
