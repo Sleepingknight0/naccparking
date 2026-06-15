@@ -15,7 +15,7 @@ from dashboard.data_service import (
     prepare_dashboard_dataframe,
 )
 from dashboard.display import prepare_display_dataframe
-from dashboard.home_summary import get_today_building_counts, get_today_records
+from dashboard.home_summary import _build_dashboard_markup, get_today_building_counts, get_today_records
 from dashboard.metrics import build_week_options, compute_kpis, filter_dataframe, summarize_by_building
 
 
@@ -206,6 +206,19 @@ class HomeSummaryTests(unittest.TestCase):
         self.assertEqual(cards[1]["label"], "ยังไม่มีอาคาร")
         self.assertEqual(cards[5]["label"], "รวมทุกอาคาร")
         self.assertEqual(cards[5]["count"], 1)
+
+    def test_home_dashboard_markup_is_compact_to_avoid_markdown_code_blocks(self):
+        cards = [
+            {"label": f"อาคาร {index}", "count": index, "kind": "building"}
+            for index in range(1, 6)
+        ]
+        cards.append({"label": "รวมทุกอาคาร", "count": 15, "kind": "total"})
+
+        markup = _build_dashboard_markup(cards)
+
+        self.assertNotIn("\n", markup)
+        self.assertNotIn("    </div>", markup)
+        self.assertEqual(markup.count('class="mini-stat-card'), 6)
 
 
 if __name__ == "__main__":

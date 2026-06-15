@@ -75,8 +75,12 @@ def render_home_mini_dashboard(
         return
 
     cards = get_today_building_counts(df, buildings)
+    _render_html(_build_dashboard_markup(cards))
+
+
+def _build_dashboard_markup(cards: list[dict[str, object]]) -> str:
     cards_html = "".join(_render_card(card) for card in cards)
-    _render_html(
+    return (
         '<div class="mini-dashboard-shell">'
         '<div class="mini-dashboard-title">สรุปยอดบันทึกวันนี้</div>'
         '<div class="mini-dashboard-scroll" aria-label="สรุปยอดบันทึกรถวันนี้">'
