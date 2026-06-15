@@ -15,6 +15,7 @@ from dashboard.data_service import (
     prepare_dashboard_dataframe,
 )
 from dashboard.display import prepare_display_dataframe
+from dashboard.home_summary import get_today_building_counts, get_today_records
 from dashboard.metrics import build_week_options, compute_kpis, filter_dataframe, summarize_by_building
 
 
@@ -165,6 +166,46 @@ class DashboardDisplayTests(unittest.TestCase):
         self.assertIn("ทะเบียนรถมาตรฐาน", display_df.columns)
         self.assertIn("รหัสรถ", display_df.columns)
         self.assertIn("วันที่/เวลาบันทึก", display_df.columns)
+
+
+class HomeSummaryTests(unittest.TestCase):
+    def test_get_today_records_parses_iso_and_thai_slash_dates(self):
+        raw = pd.DataFrame(
+            {
+                "วันที่ตรวจพบ": ["2026-06-16", "16/6/2026", "2026-06-15"],
+                "อาคาร": ["อาคาร 1", "อาคาร 2", "อาคาร 1"],
+                "ทะเบียนรถ": ["กก 1", "กก 2", "กก 3"],
+            }
+        )
+
+        today_df = get_today_records(raw, today=date(2026, 6, 16))
+
+        self.assertEqual(len(today_df), 2)
+        self.assertEqual(today_df["อาคาร"].tolist(), ["อาคาร 1", "อาคาร 2"])
+
+    def test_get_today_building_counts_uses_first_five_configured_buildings_and_total_all(self):
+        raw = pd.DataFrame(
+            {
+                "วันที่ตรวจพบ": ["2026-06-16"] * 7,
+                "อาคาร": ["อาคาร 1", "อาคาร 1", "อาคาร 2", "อาคาร 6", "อาคาร 6", "อาคาร 6", "อื่น"],
+            }
+        )
+        buildings = ["อาคาร 1", "อาคาร 2", "อาคาร 3", "อาคาร 4", "อาคาร 5", "อาคาร 6"]
+
+        cards = get_today_building_counts(raw, buildings, today=date(2026, 6, 16))
+
+        self.assertEqual([card["label"] for card in cards], ["อาคาร 1", "อาคาร 2", "อาคาร 3", "อาคาร 4", "อาคาร 5", "รวมทุกอาคาร"])
+        self.assertEqual([card["count"] for card in cards], [2, 1, 0, 0, 0, 7])
+
+    def test_get_today_building_counts_fills_missing_building_slots(self):
+        raw = pd.DataFrame({"วันที่ตรวจพบ": ["2026-06-16"], "อาคาร": ["อาคาร 1"]})
+
+        cards = get_today_building_counts(raw, ["อาคาร 1"], today=date(2026, 6, 16))
+
+        self.assertEqual(cards[0]["label"], "อาคาร 1")
+        self.assertEqual(cards[1]["label"], "ยังไม่มีอาคาร")
+        self.assertEqual(cards[5]["label"], "รวมทุกอาคาร")
+        self.assertEqual(cards[5]["count"], 1)
 
 
 if __name__ == "__main__":

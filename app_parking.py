@@ -7,6 +7,7 @@ import json
 import gspread
 from google.oauth2.service_account import Credentials
 import re
+from dashboard.home_summary import render_home_mini_dashboard
 from parking_analysis import summarize_long_parkers
 from report_generator import (
     build_detailed_report,
@@ -189,6 +190,7 @@ def init_connection():
 
 def load_data():
     columns = ["วันที่ตรวจพบ", "อาคาร", "ทะเบียนรถ", "จังหวัด"]
+    st.session_state["load_data_error"] = None
 
     try:
         sheet = init_connection()
@@ -200,6 +202,7 @@ def load_data():
             return pd.DataFrame(columns=columns)
 
     except Exception as e:
+        st.session_state["load_data_error"] = str(e)
         st.error(f"เกิดข้อผิดพลาดในการโหลดข้อมูล: {e}")
         return pd.DataFrame(columns=columns)
         
@@ -225,6 +228,16 @@ def add_row_numbers(df):
     display_df = df.reset_index(drop=True).copy()
     display_df.insert(0, "ลำดับ", range(1, len(display_df) + 1))
     return display_df
+
+def render_home_summary_placeholder(placeholder):
+    home_summary_df = load_data()
+    with placeholder.container():
+        render_home_mini_dashboard(
+            home_summary_df,
+            buildings_list,
+            is_dark=is_dark,
+            error_message=st.session_state.get("load_data_error"),
+        )
 
 THAI_MONTHS = [
     (1, "มกราคม"),
@@ -451,6 +464,9 @@ except Exception as e:
     st.error(f"เกิดข้อผิดพลาดในการเชื่อมต่อ Google Sheets: {e}")
     st.stop()
 
+home_summary_placeholder = st.empty()
+render_home_summary_placeholder(home_summary_placeholder)
+
 # ---- FORM SECTION ----
 st.markdown('<div class="section-title">📍 1. ข้อมูลสถานที่ตรวจพบ</div>', unsafe_allow_html=True)
 
@@ -512,6 +528,7 @@ with btn_col2:
                     st.session_state.last_saved_plate = license_plate
                     st.session_state.last_saved_province = province
                     st.success(f"✔️ บันทึกข้อมูลรถยนต์ [{license_plate} {province}] ลง Google Sheets สำเร็จ!")
+                    render_home_summary_placeholder(home_summary_placeholder)
             except Exception as e:
                 st.error(f"❌ เกิดข้อผิดพลาดในการบันทึกข้อมูล: {e}")
 
@@ -544,6 +561,7 @@ if st.session_state.last_saved_plate:
                 st.session_state.last_saved_plate = None
                 st.session_state.last_saved_province = None
                 st.session_state.last_saved_row = None
+                render_home_summary_placeholder(home_summary_placeholder)
                 st.rerun()
             except Exception as e:
                 st.error(f"❌ เกิดข้อผิดพลาดในการลบข้อมูล: {e}")
