@@ -339,7 +339,6 @@ with st.sidebar.expander("📝 จัดการรายชื่ออาค�
             st.warning(f"ลบอาคาร '{bldg_to_delete}' สำเร็จ!")
             st.rerun()
 
-st.sidebar.markdown("---")
 with st.sidebar.expander("📊 ข้อมูลตาราง Google Sheets", expanded=False):
     st.write("ใส่รหัสผ่านเพื่อดูข้อมูลตาราง")
     admin_pwd = st.text_input("รหัสผ่าน (Password):", type="password")
@@ -377,7 +376,6 @@ with st.sidebar.expander("📊 ข้อมูลตาราง Google Sheets",
     elif admin_pwd != "":
         st.error("รหัสผ่านไม่ถูกต้อง")
 
-st.sidebar.markdown("---")
 with st.sidebar.expander("📥 โหลดรีพอร์ต", expanded=False):
     report_pwd = st.text_input("รหัสผ่านสำหรับโหลดรีพอร์ต:", type="password")
     if report_pwd == "1234":
