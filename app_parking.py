@@ -356,6 +356,16 @@ with st.sidebar.expander("📊 ข้อมูลตาราง Google Sheets",
         st.error("รหัสผ่านไม่ถูกต้อง")
 
 st.sidebar.markdown("---")
+st.sidebar.markdown("### Analytics")
+if hasattr(st.sidebar, "page_link"):
+    st.sidebar.page_link("pages/dashboard.py", label="Dashboard")
+elif hasattr(st, "switch_page"):
+    if st.sidebar.button("Dashboard", use_container_width=True):
+        st.switch_page("pages/dashboard.py")
+else:
+    st.sidebar.caption("เปิด Dashboard จากเมนู Pages ของ Streamlit")
+
+st.sidebar.markdown("---")
 with st.sidebar.expander("📥 โหลดรีพอร์ต", expanded=False):
     report_pwd = st.text_input("รหัสผ่านสำหรับโหลดรีพอร์ต:", type="password")
     if report_pwd == "1234":
