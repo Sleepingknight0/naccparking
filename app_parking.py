@@ -320,7 +320,6 @@ elif hasattr(st, "switch_page"):
 else:
     st.sidebar.caption("เปิดแดชบอร์ดจากเมนู Pages ของ Streamlit")
 
-st.sidebar.write("ส่วนสำหรับเพิ่ม/ลด รายชื่ออาคาร")
 with st.sidebar.expander("📝 จัดการรายชื่ออาคาร", expanded=False):
     new_bldg = st.text_input("ชื่ออาคารใหม่:")
     if st.button("➕ เพิ่มอาคาร", use_container_width=True):
