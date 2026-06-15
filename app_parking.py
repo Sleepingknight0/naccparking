@@ -310,9 +310,7 @@ def find_default_week_index(week_options, selected_date):
 
 # ----------------- ADMIN SETTINGS (SIDEBAR) -----------------
 st.sidebar.markdown("## 🛠️ ตั้งค่าผู้ดูแลระบบ (Admin)")
-st.sidebar.write("ส่วนสำหรับเพิ่ม/ลด รายชื่ออาคาร")
 
-st.sidebar.markdown("---")
 st.sidebar.markdown("### 📈 รายงานและแดชบอร์ด")
 if hasattr(st.sidebar, "page_link"):
     st.sidebar.page_link("pages/dashboard.py", label="› 📈 แดชบอร์ดภาพรวม")
@@ -321,7 +319,8 @@ elif hasattr(st, "switch_page"):
         st.switch_page("pages/dashboard.py")
 else:
     st.sidebar.caption("เปิดแดชบอร์ดจากเมนู Pages ของ Streamlit")
-    
+
+st.sidebar.write("ส่วนสำหรับเพิ่ม/ลด รายชื่ออาคาร")
 with st.sidebar.expander("📝 จัดการรายชื่ออาคาร", expanded=False):
     new_bldg = st.text_input("ชื่ออาคารใหม่:")
     if st.button("➕ เพิ่มอาคาร", use_container_width=True):
@@ -332,8 +331,7 @@ with st.sidebar.expander("📝 จัดการรายชื่ออาค�
             st.rerun()
         elif new_bldg in buildings_list:
             st.error("อาคารนี้มีอยู่ในระบบแล้ว")
-            
-    st.markdown("---")
+
     if buildings_list:
         bldg_to_delete = st.selectbox("เลือกอาคารที่ต้องการลบ:", buildings_list)
         if st.button("🗑️ ลบอาคาร", use_container_width=True):
