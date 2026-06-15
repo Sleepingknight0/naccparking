@@ -312,6 +312,16 @@ def find_default_week_index(week_options, selected_date):
 st.sidebar.markdown("## 🛠️ ตั้งค่าผู้ดูแลระบบ (Admin)")
 st.sidebar.write("ส่วนสำหรับเพิ่ม/ลด รายชื่ออาคาร")
 
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 📈 รายงานและแดชบอร์ด")
+if hasattr(st.sidebar, "page_link"):
+    st.sidebar.page_link("pages/dashboard.py", label="› 📈 แดชบอร์ดภาพรวม")
+elif hasattr(st, "switch_page"):
+    if st.sidebar.button("› 📈 แดชบอร์ดภาพรวม", use_container_width=True):
+        st.switch_page("pages/dashboard.py")
+else:
+    st.sidebar.caption("เปิดแดชบอร์ดจากเมนู Pages ของ Streamlit")
+    
 with st.sidebar.expander("📝 จัดการรายชื่ออาคาร", expanded=False):
     new_bldg = st.text_input("ชื่ออาคารใหม่:")
     if st.button("➕ เพิ่มอาคาร", use_container_width=True):
@@ -369,16 +379,6 @@ with st.sidebar.expander("📊 ข้อมูลตาราง Google Sheets",
             st.error(f"ไม่สามารถโหลดข้อมูลได้: {e}")
     elif admin_pwd != "":
         st.error("รหัสผ่านไม่ถูกต้อง")
-
-st.sidebar.markdown("---")
-st.sidebar.markdown("### 📈 รายงานและแดชบอร์ด")
-if hasattr(st.sidebar, "page_link"):
-    st.sidebar.page_link("pages/dashboard.py", label="› 📈 แดชบอร์ดภาพรวม")
-elif hasattr(st, "switch_page"):
-    if st.sidebar.button("› 📈 แดชบอร์ดภาพรวม", use_container_width=True):
-        st.switch_page("pages/dashboard.py")
-else:
-    st.sidebar.caption("เปิดแดชบอร์ดจากเมนู Pages ของ Streamlit")
 
 st.sidebar.markdown("---")
 with st.sidebar.expander("📥 โหลดรีพอร์ต", expanded=False):
