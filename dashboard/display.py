@@ -23,7 +23,7 @@ from dashboard.data_service import (
 
 
 SYSTEM_COLUMN_LABELS = {
-    "date_key": "วันที่",
+    "date_key": "วันที่ตรวจพบ",
     RECORD_DATETIME_COL: "วันที่/เวลาบันทึก",
     NORMALIZED_PLATE_COL: "ทะเบียนรถมาตรฐาน",
     VEHICLE_KEY_COL: "รหัสรถ",
@@ -36,7 +36,7 @@ SYSTEM_COLUMN_LABELS = {
     "next_gap_days": "ระยะห่างถึงครั้งถัดไป (วัน)",
     REPEAT_COL: "พบซ้ำ",
     OVERNIGHT_COL: "เข้าข่ายค้างคืน",
-    OVERNIGHT_REASON_COL: "เหตุผลค้างคืน",
+    OVERNIGHT_REASON_COL: "เหตุผลค้างคืนจากระบบ",
 }
 
 OPTIONAL_USER_COLUMNS = {
@@ -94,7 +94,24 @@ def prepare_display_dataframe(
     if include_system_columns:
         display = pd.concat([display, _system_display_columns(work)], axis=1)
 
-    return display.reset_index(drop=True)
+    display = display.reset_index(drop=True)
+    display.columns = make_unique_columns(display.columns)
+    assert display.columns.is_unique
+    return display
+
+
+def make_unique_columns(columns) -> list[str]:
+    seen: dict[str, int] = {}
+    unique: list[str] = []
+    for column in columns:
+        base = str(column)
+        count = seen.get(base, 0)
+        seen[base] = count + 1
+        if count == 0:
+            unique.append(base)
+        else:
+            unique.append(f"{base} ({count + 1})")
+    return unique
 
 
 def _assign_optional_columns(display: pd.DataFrame, work: pd.DataFrame) -> None:
@@ -133,7 +150,7 @@ def _empty_columns(include_system_columns: bool) -> list[str]:
     columns = [column for column in DEFAULT_OUTPUT_COLUMNS if column not in {"เวลา", "ผู้บันทึก", "หมายเหตุ"}]
     if include_system_columns:
         columns.extend(SYSTEM_COLUMN_LABELS.values())
-    return columns
+    return make_unique_columns(columns)
 
 
 def _format_date(value: object) -> str:
@@ -152,4 +169,3 @@ def _format_system_value(value: object) -> object:
 
 def _format_overnight_status(value: object) -> str:
     return "เข้าข่ายค้างคืน" if bool(value) else "ไม่เข้าข่าย"
-

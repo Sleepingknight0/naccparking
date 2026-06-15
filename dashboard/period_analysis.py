@@ -66,14 +66,15 @@ def _render_daily(df: pd.DataFrame) -> None:
     left, right = st.columns(2)
     with left:
         components.section_title("จำนวนตามอาคาร")
-        st.bar_chart(top_counts(day_df, BUILDING_COL, 20).set_index(BUILDING_COL), height=280)
+        components.render_horizontal_bar_chart(top_counts(day_df, BUILDING_COL, 20), BUILDING_COL, height=280)
     with right:
-        components.section_title("จำนวนตามช่วงเวลา")
-        if "เวลา" in day_df.columns:
+        if "เวลา" in day_df.columns and day_df["เวลา"].fillna("").astype(str).str.strip().ne("").any():
+            components.section_title("จำนวนตามช่วงเวลา")
             time_counts = day_df["เวลา"].fillna("ไม่ระบุ").replace("", "ไม่ระบุ").value_counts().sort_index()
             st.bar_chart(time_counts, height=280)
         else:
-            components.render_empty("ไม่มีคอลัมน์เวลาในข้อมูลชุดนี้")
+            components.section_title("Top จังหวัด")
+            components.render_horizontal_bar_chart(top_counts(day_df, PROVINCE_COL, 10), PROVINCE_COL, height=280)
 
     components.section_title("รายการรถทั้งหมดของวันนั้น")
     st.dataframe(prepare_display_dataframe(day_df), use_container_width=True, hide_index=True)
@@ -101,7 +102,7 @@ def _render_weekly(df: pd.DataFrame) -> None:
 
     components.render_kpi_cards(week_df)
     components.section_title("Trend รายวันในสัปดาห์")
-    st.bar_chart(daily_counts(week_df).set_index(DATE_COL), height=280)
+    components.render_daily_counts_chart(daily_counts(week_df), height=280)
 
     col_building, col_province, col_plate = st.columns(3)
     with col_building:
@@ -136,15 +137,15 @@ def _render_monthly(df: pd.DataFrame) -> None:
 
     components.render_kpi_cards(month_df)
     components.section_title("Trend รายวันทั้งเดือน")
-    st.line_chart(daily_counts(month_df).set_index(DATE_COL), height=280)
+    components.render_daily_counts_chart(daily_counts(month_df), height=280)
 
     left, right = st.columns(2)
     with left:
         components.section_title("Top อาคาร")
-        st.bar_chart(top_counts(month_df, BUILDING_COL, 10).set_index(BUILDING_COL), height=280)
+        components.render_horizontal_bar_chart(top_counts(month_df, BUILDING_COL, 10), BUILDING_COL, height=280)
     with right:
         components.section_title("Top จังหวัด")
-        st.bar_chart(top_counts(month_df, PROVINCE_COL, 10).set_index(PROVINCE_COL), height=280)
+        components.render_horizontal_bar_chart(top_counts(month_df, PROVINCE_COL, 10), PROVINCE_COL, height=280)
 
     components.section_title("ตารางสรุปตามอาคาร")
     summary_df = summarize_by_building(month_df)

@@ -31,30 +31,29 @@ def render(df) -> None:
 
     components.section_title("จำนวนรายการตามวัน")
     daily = daily_counts(filtered)
-    st.line_chart(daily.set_index(DATE_COL), height=260)
+    components.render_daily_counts_chart(daily, height=280)
 
     left, right = st.columns(2)
     with left:
         components.section_title("Top 10 อาคารที่พบรถค้าง")
         top_buildings = top_counts(filtered, BUILDING_COL, 10)
-        if top_buildings.empty:
-            components.render_empty()
-        else:
-            st.bar_chart(top_buildings.set_index(BUILDING_COL), height=280)
+        components.render_horizontal_bar_chart(top_buildings, BUILDING_COL, height=280)
     with right:
         components.section_title("Top 10 จังหวัด")
         top_provinces = top_counts(filtered, PROVINCE_COL, 10)
-        if top_provinces.empty:
-            components.render_empty()
-        else:
-            st.bar_chart(top_provinces.set_index(PROVINCE_COL), height=280)
+        components.render_horizontal_bar_chart(top_provinces, PROVINCE_COL, height=280)
 
     components.section_title("Matrix รายวัน x อาคาร")
     matrix = building_day_matrix(filtered)
     if matrix.empty:
         components.render_empty("ยังไม่มีข้อมูลพอสำหรับ matrix")
     else:
-        st.dataframe(matrix, use_container_width=True)
+        matrix_display = matrix.copy()
+        matrix_display.index = [
+            value.strftime("%d/%m/%Y") if hasattr(value, "strftime") else str(value)
+            for value in matrix_display.index
+        ]
+        st.dataframe(matrix_display, use_container_width=True, height=360)
 
     components.section_title("รายการล่าสุด 20 รายการ")
     latest = filtered.sort_values(DATE_COL, ascending=False).head(20)

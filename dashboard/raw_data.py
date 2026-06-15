@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import date
+
 import pandas as pd
 import streamlit as st
 
@@ -24,7 +26,11 @@ def render(df: pd.DataFrame) -> None:
         date_range=filters["date_range"],
     )
 
-    search = st.text_input("ค้นหาในตาราง", placeholder="ค้นทะเบียน อาคาร จังหวัด หรือข้อความอื่น", key="raw_search")
+    search = st.text_input(
+        "ค้นหาในตาราง",
+        placeholder="ค้นทะเบียนรถ อาคาร จังหวัด หมายเหตุ หรือเหตุผลค้างคืน",
+        key="raw_search",
+    )
     filtered = filter_dataframe(filtered, search_text=search)
     show_system_cols = st.toggle(
         "แสดงคอลัมน์ระบบ/คอลัมน์ที่คำนวณเพิ่ม",
@@ -32,28 +38,40 @@ def render(df: pd.DataFrame) -> None:
         key="raw_show_system_cols",
     )
 
-    display_df = prepare_display_dataframe(filtered, include_system_columns=show_system_cols)
-    st.caption(f"จำนวน row หลัง filter: {len(display_df):,}")
-    st.dataframe(
-        display_df,
-        use_container_width=True,
-        hide_index=True,
-        column_config={
-            "วันที่": st.column_config.TextColumn("วันที่"),
-            "ทะเบียนรถ": st.column_config.TextColumn("ทะเบียนรถ"),
-            "จังหวัด": st.column_config.TextColumn("จังหวัด"),
-            "อาคาร": st.column_config.TextColumn("อาคาร"),
-            "สถานะค้างคืน": st.column_config.TextColumn("สถานะค้างคืน"),
-            "เหตุผลค้างคืน": st.column_config.TextColumn("เหตุผลค้างคืน"),
-        },
-    )
+    try:
+        display_df = prepare_display_dataframe(filtered, include_system_columns=show_system_cols)
+        if not display_df.columns.is_unique:
+            raise ValueError("Duplicate column names found")
+        st.caption(f"จำนวนรายการหลังกรอง: {len(display_df):,} รายการ")
+        st.dataframe(
+            display_df,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "วันที่": st.column_config.TextColumn("วันที่"),
+                "ทะเบียนรถ": st.column_config.TextColumn("ทะเบียนรถ"),
+                "จังหวัด": st.column_config.TextColumn("จังหวัด"),
+                "อาคาร": st.column_config.TextColumn("อาคาร"),
+                "สถานะค้างคืน": st.column_config.TextColumn("สถานะค้างคืน"),
+                "เหตุผลค้างคืน": st.column_config.TextColumn("เหตุผลค้างคืน"),
+            },
+        )
+    except Exception as exc:
+        if "Duplicate column" in str(exc):
+            st.error("ไม่สามารถแสดงตารางข้อมูลได้ เนื่องจากพบชื่อคอลัมน์ซ้ำ")
+        else:
+            st.error("ไม่สามารถแสดงตารางข้อมูลได้")
+        with st.expander("รายละเอียดสำหรับผู้ดูแลระบบ"):
+            st.exception(exc)
+        return
 
     col_csv, col_excel = st.columns(2)
+    today_key = date.today().strftime("%Y-%m-%d")
     with col_csv:
         st.download_button(
             "ดาวน์โหลด CSV",
             data=to_csv_bytes(display_df),
-            file_name="naccparking-dashboard.csv",
+            file_name=f"nacc_parking_export_{today_key}.csv",
             mime="text/csv",
             use_container_width=True,
         )
@@ -63,7 +81,7 @@ def render(df: pd.DataFrame) -> None:
             st.download_button(
                 "ดาวน์โหลด Excel",
                 data=excel_bytes,
-                file_name="naccparking-dashboard.xlsx",
+                file_name=f"nacc_parking_export_{today_key}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 use_container_width=True,
             )

@@ -1,8 +1,10 @@
 import unittest
 from datetime import date
+from unittest.mock import patch
 
 import pandas as pd
 
+from dashboard import components
 from dashboard.data_service import (
     BUILDING_COL,
     DATE_COL,
@@ -14,7 +16,7 @@ from dashboard.data_service import (
     normalize_plate,
     prepare_dashboard_dataframe,
 )
-from dashboard.display import prepare_display_dataframe
+from dashboard.display import make_unique_columns, prepare_display_dataframe
 from dashboard.home_summary import _build_dashboard_markup, get_today_building_counts, get_today_records
 from dashboard.metrics import build_week_options, compute_kpis, filter_dataframe, summarize_by_building
 
@@ -128,6 +130,27 @@ class DashboardMetricsTests(unittest.TestCase):
         self.assertTrue(summary.empty)
 
 
+class DashboardChartTests(unittest.TestCase):
+    def test_daily_counts_chart_uses_date_category_axis(self):
+        chart_df = pd.DataFrame(
+            {
+                DATE_COL: [date(2026, 6, 12), date(2026, 6, 13)],
+                "จำนวนรายการ": [3, 5],
+            }
+        )
+        captured = {}
+
+        def capture_chart(chart, **_kwargs):
+            captured["spec"] = chart.to_dict()
+
+        with patch.object(components.st, "altair_chart", side_effect=capture_chart):
+            components.render_daily_counts_chart(chart_df)
+
+        x_encoding = captured["spec"]["encoding"]["x"]
+        self.assertEqual(x_encoding["field"], "วันที่")
+        self.assertEqual(x_encoding["type"], "nominal")
+
+
 class DashboardDisplayTests(unittest.TestCase):
     def test_prepare_display_dataframe_uses_thai_headers_and_hides_system_columns_by_default(self):
         raw = pd.DataFrame(
@@ -166,6 +189,33 @@ class DashboardDisplayTests(unittest.TestCase):
         self.assertIn("ทะเบียนรถมาตรฐาน", display_df.columns)
         self.assertIn("รหัสรถ", display_df.columns)
         self.assertIn("วันที่/เวลาบันทึก", display_df.columns)
+
+    def test_prepare_display_dataframe_keeps_unique_columns_when_system_columns_overlap(self):
+        raw = pd.DataFrame(
+            {
+                DATE_COL: ["2026-06-12"],
+                "date_key": ["2026-06-12"],
+                BUILDING_COL: ["อาคาร 4"],
+                PLATE_COL: ["กก 1234"],
+                PROVINCE_COL: ["กรุงเทพมหานคร"],
+                "overnight_reason": ["พบต่อเนื่อง"],
+            }
+        )
+        prepared = prepare_dashboard_dataframe(raw)
+
+        display_df = prepare_display_dataframe(prepared, include_system_columns=True)
+
+        self.assertTrue(display_df.columns.is_unique)
+        self.assertIn("วันที่", display_df.columns)
+        self.assertIn("วันที่ตรวจพบ", display_df.columns)
+        self.assertIn("เหตุผลค้างคืน", display_df.columns)
+        self.assertIn("เหตุผลค้างคืนจากระบบ", display_df.columns)
+
+    def test_make_unique_columns_adds_suffixes(self):
+        self.assertEqual(
+            make_unique_columns(["วันที่", "วันที่", "ทะเบียนรถ", "วันที่"]),
+            ["วันที่", "วันที่ (2)", "ทะเบียนรถ", "วันที่ (3)"],
+        )
 
 
 class HomeSummaryTests(unittest.TestCase):
