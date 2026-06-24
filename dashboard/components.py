@@ -1,16 +1,15 @@
 from __future__ import annotations
 
 import html
-import os
 from datetime import date
 
 import altair as alt
 import pandas as pd
 import streamlit as st
-import toml
 
 from dashboard.data_service import BUILDING_COL, DATE_COL, PROVINCE_COL
 from dashboard.metrics import THAI_MONTH_BY_NUMBER, compute_kpis, month_options
+from dashboard.theme import is_dark_theme
 
 
 COUNT_COL = "จำนวนรายการ"
@@ -260,27 +259,13 @@ def _count_column(df: pd.DataFrame) -> str:
     return COUNT_COL
 
 
-def _is_dark_theme() -> bool:
-    config_path = ".streamlit/config.toml"
-    if os.path.exists(config_path):
-        try:
-            config = toml.load(config_path)
-            return config.get("theme", {}).get("base", "light") == "dark"
-        except Exception:
-            pass
-    try:
-        return st.get_option("theme.base") == "dark"
-    except Exception:
-        return True
-
-
 def _chart_text() -> str:
-    return "#F4F7FA" if _is_dark_theme() else "#0F172A"
+    return "#F4F7FA" if is_dark_theme() else "#0F172A"
 
 
 def _chart_grid() -> str:
-    return "rgba(167,176,188,0.18)" if _is_dark_theme() else "rgba(82,97,115,0.18)"
+    return "rgba(167,176,188,0.18)" if is_dark_theme() else "rgba(82,97,115,0.18)"
 
 
 def _chart_accent() -> str:
-    return "#00A7C8" if _is_dark_theme() else "#2C5364"
+    return "#00A7C8" if is_dark_theme() else "#2C5364"

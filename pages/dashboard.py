@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-import os
-
 import streamlit as st
-import toml
 
 from dashboard import components, overview, period_analysis, raw_data, vehicle_analysis
 from dashboard.data_service import clear_dashboard_cache, get_dashboard_data
 from dashboard.styles import apply_dashboard_styles
+from dashboard.theme import init_theme_state, is_dark_theme
 
 
 st.set_page_config(
@@ -18,21 +16,8 @@ st.set_page_config(
 )
 
 
-def _is_dark_theme() -> bool:
-    config_path = ".streamlit/config.toml"
-    if os.path.exists(config_path):
-        try:
-            config = toml.load(config_path)
-            return config.get("theme", {}).get("base", "light") == "dark"
-        except Exception:
-            pass
-    try:
-        return st.get_option("theme.base") == "dark"
-    except Exception:
-        return True
-
-
-apply_dashboard_styles(_is_dark_theme())
+init_theme_state()
+apply_dashboard_styles(is_dark_theme())
 
 
 DASHBOARD_SECTIONS = {

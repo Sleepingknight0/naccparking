@@ -2,12 +2,12 @@ import streamlit as st
 from datetime import date, datetime, timedelta
 import pandas as pd
 import os
-import toml
 import json
 import gspread
 from google.oauth2.service_account import Credentials
 import re
 from dashboard.home_summary import render_home_mini_dashboard
+from dashboard.theme import init_theme_state, is_dark_theme
 from parking_analysis import summarize_long_parkers
 from report_generator import (
     build_detailed_report,
@@ -28,55 +28,14 @@ st.set_page_config(
 )
 
 # ----------------- THEME MANAGEMENT -----------------
-CONFIG_PATH = ".streamlit/config.toml"
-
-def get_current_theme():
-    """อ่านค่า Theme ปัจจุบันจาก config.toml"""
-    if os.path.exists(CONFIG_PATH):
-        try:
-            config = toml.load(CONFIG_PATH)
-            return config.get("theme", {}).get("base", "light")
-        except:
-            return "light"
-    return "light"
-
-def set_theme(theme_base):
-    """เขียนค่า Theme ใหม่ลงไปใน config.toml เพื่อบังคับเปลี่ยนธีมทั้งระบบ"""
-    if not os.path.exists(".streamlit"):
-        os.makedirs(".streamlit")
-    
-    config = {}
-    if os.path.exists(CONFIG_PATH):
-        try:
-            config = toml.load(CONFIG_PATH)
-        except:
-            pass
-            
-    if "theme" not in config:
-        config["theme"] = {}
-        
-    if config["theme"].get("base") == theme_base:
-        return
-        
-    config["theme"]["base"] = theme_base
-    config["theme"]["primaryColor"] = "#2c5364"
-    config["theme"]["font"] = "sans serif"
-    
-    with open(CONFIG_PATH, "w") as f:
-        toml.dump(config, f)
-        
-current_theme = get_current_theme()
-is_dark = True if current_theme == "dark" else False
+init_theme_state()
 
 # สวิตช์เปิด/ปิด โหมดกลางคืน
 col_space, col_toggle = st.columns([4, 1.5])
 with col_toggle:
-    dark_mode_toggle = st.toggle("🌙 โหมดกลางคืน", value=is_dark)
-    if dark_mode_toggle != is_dark:
-        if dark_mode_toggle:
-            set_theme("dark")
-        else:
-            set_theme("light")
+    dark_mode_toggle = st.toggle("🌙 โหมดกลางคืน", value=is_dark_theme())
+    if dark_mode_toggle != is_dark_theme():
+        st.session_state.ui_theme = "dark" if dark_mode_toggle else "light"
         st.rerun()
 
 # ----------------- CUSTOM CSS -----------------
@@ -145,7 +104,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-if is_dark:
+if is_dark_theme():
     st.markdown("""
     <style>
         .header-container {
@@ -235,7 +194,7 @@ def render_home_summary_placeholder(placeholder):
         render_home_mini_dashboard(
             home_summary_df,
             buildings_list,
-            is_dark=is_dark,
+            is_dark=is_dark_theme(),
             error_message=st.session_state.get("load_data_error"),
         )
 
