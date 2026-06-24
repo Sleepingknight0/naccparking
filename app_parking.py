@@ -316,12 +316,16 @@ with st.sidebar.expander("📥 โหลดรีพอร์ต", expanded=Fals
 
 
 # ----------------- MAIN APP -----------------
-if 'last_saved_plate' not in st.session_state:
-    st.session_state.last_saved_plate = None
-if 'last_saved_province' not in st.session_state:
-    st.session_state.last_saved_province = None
-if 'last_saved_row' not in st.session_state:
-    st.session_state.last_saved_row = None
+PROVINCES_LIST = ["กรุงเทพมหานคร", "กระบี่", "กาญจนบุรี", "กาฬสินธุ์", "กำแพงเพชร", "ขอนแก่น", "จันทบุรี", "ฉะเชิงเทรา", "ชลบุรี", "ชัยนาท", "ชัยภูมิ", "ชุมพร", "เชียงราย", "เชียงใหม่", "ตรัง", "ตราด", "ตาก", "นครนายก", "นครปฐม", "นครพนม", "นครราชสีมา", "นครศรีธรรมราช", "นครสวรรค์", "นนทบุรี", "นราธิวาส", "น่าน", "บึงกาฬ", "บุรีรัมย์", "ปทุมธานี", "ประจวบคีรีขันธ์", "ปราจีนบุรี", "ปัตตานี", "พระนครศรีอยุธยา", "พะเยา", "พังงา", "พัทลุง", "พิจิตร", "พิษณุโลก", "เพชรบุรี", "เพชรบูรณ์", "แพร่", "ภูเก็ต", "มหาสารคาม", "มุกดาหาร", "แม่ฮ่องสอน", "ยโสธร", "ยะลา", "ร้อยเอ็ด", "ระนอง", "ระยอง", "ราชบุรี", "ลพบุรี", "ลำปาง", "ลำพูน", "เลย", "ศรีสะเกษ", "สกลนคร", "สงขลา", "สตูล", "สมุทรปราการ", "สมุทรสงคราม", "สมุทรสาคร", "สระแก้ว", "สระบุรี", "สิงห์บุรี", "สุโขทัย", "สุพรรณบุรี", "สุราษฎร์ธานี", "สุรินทร์", "หนองคาย", "หนองบัวลำภู", "อ่างทอง", "อำนาจเจริญ", "อุดรธานี", "อุตรดิตถ์", "อุทัยธานี", "อุบลราชธานี"]
+
+if "vehicle_rows" not in st.session_state:
+    st.session_state.vehicle_rows = [{"id": 1}]
+if "next_vehicle_id" not in st.session_state:
+    st.session_state.next_vehicle_id = 2
+if "last_saved_batch" not in st.session_state:
+    st.session_state.last_saved_batch = []
+if "last_saved_rows" not in st.session_state:
+    st.session_state.last_saved_rows = []
 
 # ---- HEADER ----
 st.markdown("""
@@ -340,7 +344,7 @@ except Exception as e:
 home_summary_placeholder = st.empty()
 render_home_summary_placeholder(home_summary_placeholder)
 
-# ---- FORM SECTION ----
+# ---- SECTION 1: อาคาร ----
 st.markdown('<div class="section-title">📍 1. ข้อมูลสถานที่ตรวจพบ</div>', unsafe_allow_html=True)
 
 if not buildings_list:
@@ -350,93 +354,178 @@ building = st.selectbox("อาคาร (Building)", buildings_list if building
 st.markdown("<br>", unsafe_allow_html=True)
 st.markdown('<div class="section-title">📝 2. ข้อมูลยานพาหนะ</div>', unsafe_allow_html=True)
 
-col_plate, col_prov = st.columns([2, 1.5])
-with col_plate:
-    license_plate = st.text_input("ทะเบียนรถยนต์", placeholder="เช่น 9กข 1234").strip()
-with col_prov:
-    provinces_list = ["กรุงเทพมหานคร", "กระบี่", "กาญจนบุรี", "กาฬสินธุ์", "กำแพงเพชร", "ขอนแก่น", "จันทบุรี", "ฉะเชิงเทรา", "ชลบุรี", "ชัยนาท", "ชัยภูมิ", "ชุมพร", "เชียงราย", "เชียงใหม่", "ตรัง", "ตราด", "ตาก", "นครนายก", "นครปฐม", "นครพนม", "นครราชสีมา", "นครศรีธรรมราช", "นครสวรรค์", "นนทบุรี", "นราธิวาส", "น่าน", "บึงกาฬ", "บุรีรัมย์", "ปทุมธานี", "ประจวบคีรีขันธ์", "ปราจีนบุรี", "ปัตตานี", "พระนครศรีอยุธยา", "พะเยา", "พังงา", "พัทลุง", "พิจิตร", "พิษณุโลก", "เพชรบุรี", "เพชรบูรณ์", "แพร่", "ภูเก็ต", "มหาสารคาม", "มุกดาหาร", "แม่ฮ่องสอน", "ยโสธร", "ยะลา", "ร้อยเอ็ด", "ระนอง", "ระยอง", "ราชบุรี", "ลพบุรี", "ลำปาง", "ลำพูน", "เลย", "ศรีสะเกษ", "สกลนคร", "สงขลา", "สตูล", "สมุทรปราการ", "สมุทรสงคราม", "สมุทรสาคร", "สระแก้ว", "สระบุรี", "สิงห์บุรี", "สุโขทัย", "สุพรรณบุรี", "สุราษฎร์ธานี", "สุรินทร์", "หนองคาย", "หนองบัวลำภู", "อ่างทอง", "อำนาจเจริญ", "อุดรธานี", "อุตรดิตถ์", "อุทัยธานี", "อุบลราชธานี"]
-    province = st.selectbox("จังหวัด", provinces_list)
+# ---- Row management controls ----
+ctrl_col1, ctrl_col2, ctrl_col3 = st.columns([2.5, 1.2, 1.2])
+with ctrl_col1:
+    st.caption(f"รายการปัจจุบัน: {len(st.session_state.vehicle_rows)} / 100")
+with ctrl_col2:
+    if st.button("➕ เพิ่มทะเบียน", use_container_width=True):
+        if len(st.session_state.vehicle_rows) >= 100:
+            st.warning("⚠️ เพิ่มได้สูงสุด 100 คัน")
+        else:
+            st.session_state.vehicle_rows.append({"id": st.session_state.next_vehicle_id})
+            st.session_state.next_vehicle_id += 1
+            st.rerun()
+with ctrl_col3:
+    if st.button("🗑️ ล้างรายการ", use_container_width=True):
+        for _row in st.session_state.vehicle_rows:
+            _rid = _row["id"]
+            st.session_state.pop(f"plate_{_rid}", None)
+            st.session_state.pop(f"province_{_rid}", None)
+        st.session_state.vehicle_rows = [{"id": st.session_state.next_vehicle_id}]
+        st.session_state.next_vehicle_id += 1
+        st.rerun()
+
+# ---- Vehicle input rows (no st.form — delete buttons must be outside form) ----
+for i, row in enumerate(list(st.session_state.vehicle_rows)):
+    rid = row["id"]
+    st.markdown(f"**รายการที่ {i + 1}**")
+    col_plate, col_prov, col_del = st.columns([2.5, 1.5, 0.5])
+    with col_plate:
+        st.text_input("ทะเบียนรถยนต์", placeholder="เช่น 9กข 1234", key=f"plate_{rid}")
+    with col_prov:
+        st.selectbox("จังหวัด", PROVINCES_LIST, key=f"province_{rid}")
+    with col_del:
+        st.write(" ")
+        if st.button("🗑️", key=f"delete_{rid}", help="ลบแถวนี้"):
+            if len(st.session_state.vehicle_rows) <= 1:
+                st.warning("⚠️ ต้องมีอย่างน้อย 1 รายการ")
+            else:
+                st.session_state.vehicle_rows = [
+                    r for r in st.session_state.vehicle_rows if r["id"] != rid
+                ]
+                st.session_state.pop(f"plate_{rid}", None)
+                st.session_state.pop(f"province_{rid}", None)
+                st.rerun()
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# ---- ACTION BUTTONS ----
+# ---- SAVE BUTTON ----
 btn_col1, btn_col2, btn_col3 = st.columns([1, 2, 1])
-
 with btn_col2:
     if st.button("💾 บันทึกข้อมูลเข้าสู่ระบบ", type="primary", use_container_width=True):
-        if license_plate == "":
-            st.error("❌ กรุณากรอกทะเบียนรถก่อนบันทึกข้อมูลครับ")
-        elif not building:
+        if not building:
             st.error("❌ กรุณาเลือกอาคารก่อนบันทึกข้อมูลครับ")
         else:
-            current_date = datetime.now().strftime("%Y-%m-%d")
-            
-            try:
-                # ตรวจสอบข้อมูลซ้ำของวันนี้
-                records = sheet.get_all_values()
-                is_duplicate = False
-                for row in records:
-                    if len(row) >= 4:
-                        if row[0] == current_date and row[2] == license_plate and row[3] == province:
-                            is_duplicate = True
-                            break
-                
-                if is_duplicate:
-                    st.error(f"⚠️ ข้อมูลซ้ำ! รถทะเบียน [{license_plate} {province}] ถูกบันทึกไปแล้วในวันนี้ครับ")
-                else:
-                    row_data = [current_date, building, license_plate, province]
-                    res = sheet.append_row(row_data)
-                    
-                    # หา Row Index ที่เพิ่งถูกบันทึกลงไป เพื่อการลบที่แม่นยำ
-                    updated_range = res.get('updates', {}).get('updatedRange', '')
-                    if updated_range:
-                        match = re.search(r'[A-Z]+(\d+)', updated_range)
-                        if match:
-                            st.session_state.last_saved_row = int(match.group(1))
-                        else:
-                            st.session_state.last_saved_row = None
+            # Collect non-empty entries
+            entries = []
+            for row in st.session_state.vehicle_rows:
+                rid = row["id"]
+                plate = st.session_state.get(f"plate_{rid}", "").strip()
+                prov = st.session_state.get(f"province_{rid}", PROVINCES_LIST[0])
+                if plate:
+                    entries.append({"plate": plate, "province": prov})
+
+            if not entries:
+                st.error("❌ กรุณากรอกทะเบียนรถอย่างน้อย 1 รายการครับ")
+            else:
+                # Check duplicates within the current form
+                seen = set()
+                intra_dupes = []
+                for e in entries:
+                    k = (e["plate"], e["province"])
+                    if k in seen:
+                        intra_dupes.append(e)
                     else:
-                        st.session_state.last_saved_row = None
+                        seen.add(k)
 
-                    st.session_state.last_saved_plate = license_plate
-                    st.session_state.last_saved_province = province
-                    st.success(f"✔️ บันทึกข้อมูลรถยนต์ [{license_plate} {province}] ลง Google Sheets สำเร็จ!")
-                    render_home_summary_placeholder(home_summary_placeholder)
-            except Exception as e:
-                st.error(f"❌ เกิดข้อผิดพลาดในการบันทึกข้อมูล: {e}")
+                if intra_dupes:
+                    dupe_list = ", ".join(f"{d['plate']} {d['province']}" for d in intra_dupes)
+                    st.error(f"❌ พบทะเบียนซ้ำในรายการที่กรอก: {dupe_list} — กรุณาแก้ไขก่อนบันทึก")
+                else:
+                    current_date = datetime.now().strftime("%Y-%m-%d")
+                    try:
+                        records = sheet.get_all_values()
+                        existing_today = {
+                            (r[2], r[3]) for r in records
+                            if len(r) >= 4 and r[0] == current_date
+                        }
 
-if st.session_state.last_saved_plate:
+                        sheet_dupes = [e for e in entries if (e["plate"], e["province"]) in existing_today]
+                        to_save = [e for e in entries if (e["plate"], e["province"]) not in existing_today]
+
+                        if sheet_dupes:
+                            dupe_list = ", ".join(f"{d['plate']} {d['province']}" for d in sheet_dupes)
+                            st.error(
+                                f"❌ พบทะเบียนซ้ำกับข้อมูลวันนี้ใน Google Sheets: {dupe_list} "
+                                f"— กรุณาแก้ไขก่อนบันทึก"
+                            )
+                        elif not to_save:
+                            st.error("❌ ทุกรายการซ้ำกับข้อมูลที่บันทึกไปแล้วในวันนี้")
+                        else:
+                            rows_to_append = [
+                                [current_date, building, e["plate"], e["province"]]
+                                for e in to_save
+                            ]
+                            res = sheet.append_rows(rows_to_append, value_input_option="USER_ENTERED")
+
+                            # Parse starting row from response range e.g. "RawData!A5:D7"
+                            saved_rows = []
+                            updated_range = res.get("updates", {}).get("updatedRange", "")
+                            if updated_range:
+                                m = re.search(r'[A-Z]+(\d+)', updated_range)
+                                if m:
+                                    start_row = int(m.group(1))
+                                    saved_rows = list(range(start_row, start_row + len(to_save)))
+
+                            st.session_state.last_saved_batch = [
+                                {
+                                    "plate": e["plate"],
+                                    "province": e["province"],
+                                    "building": building,
+                                    "date": current_date,
+                                }
+                                for e in to_save
+                            ]
+                            st.session_state.last_saved_rows = saved_rows
+
+                            labels = ", ".join(f"{e['plate']} {e['province']}" for e in to_save)
+                            st.success(f"✔️ บันทึกสำเร็จ {len(to_save)} รายการ: {labels}")
+                            render_home_summary_placeholder(home_summary_placeholder)
+                    except Exception as exc:
+                        st.error(f"❌ เกิดข้อผิดพลาดในการบันทึกข้อมูล: {exc}")
+
+# ---- UNDO LAST BATCH ----
+if st.session_state.last_saved_batch:
     st.markdown("<br>", unsafe_allow_html=True)
+    batch_labels = ", ".join(
+        f"{e['plate']} {e['province']}" for e in st.session_state.last_saved_batch
+    )
+    st.caption(f"ชุดล่าสุดที่บันทึก ({len(st.session_state.last_saved_batch)} รายการ): {batch_labels}")
     undo_col1, undo_col2, undo_col3 = st.columns([1.5, 1, 1.5])
     with undo_col2:
-        if st.button("🗑️ ยกเลิกรายการล่าสุด", use_container_width=True):
-            deleted_plate = st.session_state.last_saved_plate
-            deleted_prov = st.session_state.last_saved_province
-            row_to_delete = st.session_state.last_saved_row
-            
+        if st.button("↩️ ยกเลิกชุดล่าสุด", use_container_width=True):
             try:
-                if row_to_delete:
-                    sheet.delete_rows(row_to_delete)
+                saved_rows = st.session_state.last_saved_rows
+                if saved_rows:
+                    for row_idx in sorted(saved_rows, reverse=True):
+                        sheet.delete_rows(row_idx)
                 else:
-                    # Fallback
+                    # Fallback: search from the bottom of the sheet by content
                     records = sheet.get_all_values()
-                    found_row = -1
-                    for i in range(len(records)-1, -1, -1):
-                        if len(records[i]) >= 4 and records[i][2] == deleted_plate and records[i][3] == deleted_prov:
-                            found_row = i + 1
-                            break
-                    if found_row != -1:
-                        sheet.delete_rows(found_row)
-                    else:
-                        st.warning("ไม่พบรายการดังกล่าวในระบบ")
+                    rows_to_delete = []
+                    for entry in st.session_state.last_saved_batch:
+                        for i in range(len(records) - 1, -1, -1):
+                            r = records[i]
+                            if (
+                                len(r) >= 4
+                                and r[0] == entry["date"]
+                                and r[1] == entry["building"]
+                                and r[2] == entry["plate"]
+                                and r[3] == entry["province"]
+                            ):
+                                rows_to_delete.append(i + 1)
+                                break
+                    for row_idx in sorted(rows_to_delete, reverse=True):
+                        sheet.delete_rows(row_idx)
 
-                st.warning(f"ลบข้อมูลรถยนต์ [{deleted_plate} {deleted_prov}] ออกจาก Google Sheets เรียบร้อยแล้ว")
-                st.session_state.last_saved_plate = None
-                st.session_state.last_saved_province = None
-                st.session_state.last_saved_row = None
+                n = len(st.session_state.last_saved_batch)
+                st.warning(f"ลบข้อมูลชุดล่าสุด {n} รายการออกจาก Google Sheets เรียบร้อยแล้ว")
+                st.session_state.last_saved_batch = []
+                st.session_state.last_saved_rows = []
                 render_home_summary_placeholder(home_summary_placeholder)
                 st.rerun()
-            except Exception as e:
-                st.error(f"❌ เกิดข้อผิดพลาดในการลบข้อมูล: {e}")
+            except Exception as exc:
+                st.error(f"❌ เกิดข้อผิดพลาดในการลบข้อมูล: {exc}")
 
 # ---- END OF APP ----
