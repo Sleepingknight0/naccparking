@@ -7,7 +7,7 @@ import gspread
 from google.oauth2.service_account import Credentials
 import re
 from dashboard.home_summary import render_home_mini_dashboard
-from dashboard.theme import init_theme_state, is_dark_theme
+from dashboard.theme import init_theme_state, set_theme_from_toggle, apply_theme_css
 from parking_analysis import summarize_long_parkers
 from report_generator import (
     build_detailed_report,
@@ -29,102 +29,17 @@ st.set_page_config(
 
 # ----------------- THEME MANAGEMENT -----------------
 init_theme_state()
+apply_theme_css()
 
 # สวิตช์เปิด/ปิด โหมดกลางคืน
 col_space, col_toggle = st.columns([4, 1.5])
 with col_toggle:
-    dark_mode_toggle = st.toggle("🌙 โหมดกลางคืน", value=is_dark_theme())
-    if dark_mode_toggle != is_dark_theme():
-        st.session_state.ui_theme = "dark" if dark_mode_toggle else "light"
-        st.rerun()
-
-# ----------------- CUSTOM CSS -----------------
-st.markdown("""
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap');
-
-    html, body, [class*="css"] {
-        font-family: 'Kanit', sans-serif !important;
-    }
-    
-    .header-container {
-        background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
-        padding: 2.5rem 2rem;
-        border-radius: 12px;
-        color: white;
-        text-align: center;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-        margin-bottom: 2rem;
-        margin-top: 0.5rem;
-    }
-    .header-title {
-        font-size: 2.2rem;
-        font-weight: 600;
-        margin: 0;
-        letter-spacing: 0.5px;
-    }
-    .header-subtitle {
-        font-size: 1.1rem;
-        font-weight: 300;
-        color: #e0e0e0;
-        margin-top: 0.5rem;
-    }
-
-    .section-title {
-        font-size: 1.25rem;
-        font-weight: 600;
-        margin-bottom: 1rem;
-        padding-bottom: 0.5rem;
-        border-bottom: 2px solid #e2e8f0;
-    }
-    
-    div.stButton > button:first-child {
-        font-family: 'Kanit', sans-serif;
-        font-size: 1.1rem;
-        font-weight: 500;
-        border-radius: 8px;
-        padding: 0.5rem 1rem;
-        transition: all 0.3s ease;
-    }
-
-    section[data-testid="stSidebar"] a[href*="dashboard"] {
-        border: 1px solid rgba(44, 83, 100, 0.35);
-        border-radius: 8px;
-        padding: 0.45rem 0.65rem;
-        background: rgba(44, 83, 100, 0.08);
-        text-decoration: none;
-        font-weight: 500;
-        transition: all 0.2s ease;
-    }
-
-    section[data-testid="stSidebar"] a[href*="dashboard"]:hover {
-        background: rgba(44, 83, 100, 0.16);
-        border-color: rgba(44, 83, 100, 0.55);
-    }
-</style>
-""", unsafe_allow_html=True)
-
-if is_dark_theme():
-    st.markdown("""
-    <style>
-        .header-container {
-            background: linear-gradient(135deg, #1c2b33 0%, #15262c 50%, #0d171a 100%);
-            border: 1px solid #2d3748;
-        }
-        .section-title {
-            color: var(--text-color) !important;
-            border-bottom: 2px solid #4a5568;
-        }
-    </style>
-    """, unsafe_allow_html=True)
-else:
-    st.markdown("""
-    <style>
-        .section-title {
-            color: var(--text-color) !important;
-        }
-    </style>
-    """, unsafe_allow_html=True)
+    st.toggle(
+        "🌙 โหมดกลางคืน",
+        key="dark_mode_toggle",
+        value=(st.session_state.ui_theme == "dark"),
+        on_change=set_theme_from_toggle,
+    )
 
 
 # ----------------- DATA MANAGEMENT (GOOGLE SHEETS) -----------------
@@ -194,7 +109,6 @@ def render_home_summary_placeholder(placeholder):
         render_home_mini_dashboard(
             home_summary_df,
             buildings_list,
-            is_dark=is_dark_theme(),
             error_message=st.session_state.get("load_data_error"),
         )
 

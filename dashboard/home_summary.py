@@ -62,10 +62,8 @@ def get_today_building_counts(
 def render_home_mini_dashboard(
     df: pd.DataFrame,
     buildings: list[str],
-    is_dark: bool,
     error_message: str | None = None,
 ) -> None:
-    _render_styles(is_dark)
     if error_message:
         _render_html(
             '<div class="mini-dashboard-shell">'
@@ -116,135 +114,6 @@ def _render_html(markup: str) -> None:
     else:
         st.markdown(markup, unsafe_allow_html=True)
 
-
-def _render_styles(is_dark: bool) -> None:
-    if is_dark:
-        card_bg = "rgba(255,255,255,0.055)"
-        card_border = "rgba(255,255,255,0.13)"
-        text_primary = "#F8FAFC"
-        text_secondary = "#B7C0CB"
-        shell_title = "#E5EDF5"
-        shadow = "none"
-        total_border = "rgba(0, 209, 255, 0.36)"
-        total_bg = "rgba(0, 209, 255, 0.08)"
-    else:
-        card_bg = "#FFFFFF"
-        card_border = "#E2E8F0"
-        text_primary = "#0F172A"
-        text_secondary = "#64748B"
-        shell_title = "#1F2937"
-        shadow = "0 6px 18px rgba(15, 23, 42, 0.06)"
-        total_border = "rgba(44, 83, 100, 0.36)"
-        total_bg = "rgba(44, 83, 100, 0.06)"
-
-    st.markdown(
-        f"""
-<style>
-  .mini-dashboard-shell {{
-    margin: -0.35rem 0 1.55rem;
-  }}
-
-  .mini-dashboard-title {{
-    color: {shell_title};
-    font-size: 0.98rem;
-    font-weight: 600;
-    margin: 0 0 0.55rem;
-  }}
-
-  .mini-dashboard-wrap {{
-    width: 100%;
-    max-width: 100%;
-    overflow-x: hidden;
-    box-sizing: border-box;
-  }}
-
-  .mini-dashboard-grid {{
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: clamp(4px, 1.5vw, 10px);
-    width: 100%;
-    max-width: 100%;
-    box-sizing: border-box;
-  }}
-
-  .mini-stat-card {{
-    min-width: 0;
-    width: 100%;
-    min-height: clamp(82px, 24vw, 112px);
-    box-sizing: border-box;
-    border-radius: clamp(8px, 2vw, 14px);
-    border: 1px solid {card_border};
-    background: {card_bg};
-    box-shadow: {shadow};
-    padding: clamp(8px, 2.2vw, 18px);
-    overflow: hidden;
-  }}
-
-  .mini-stat-card--total {{
-    border-color: {total_border};
-    background: {total_bg};
-  }}
-
-  .mini-stat-top {{
-    display: flex;
-    align-items: center;
-    gap: clamp(3px, 1vw, 7px);
-    min-width: 0;
-  }}
-
-  .mini-stat-icon {{
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: clamp(18px, 5vw, 28px);
-    height: clamp(18px, 5vw, 28px);
-    border-radius: 6px;
-    color: #2c5364;
-    background: rgba(44, 83, 100, 0.12);
-    font-size: clamp(11px, 3vw, 16px);
-    flex: 0 0 auto;
-  }}
-
-  .mini-stat-title {{
-    color: {text_secondary};
-    font-size: clamp(10px, 2.6vw, 14px);
-    line-height: 1.25;
-    font-weight: 500;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    min-width: 0;
-  }}
-
-  .mini-stat-value {{
-    color: {text_primary};
-    font-size: clamp(20px, 6vw, 34px);
-    line-height: 1.05;
-    font-weight: 800;
-    margin-top: clamp(6px, 1.4vw, 10px);
-  }}
-
-  .mini-stat-subtitle {{
-    color: {text_secondary};
-    font-size: clamp(9px, 2.4vw, 13px);
-    line-height: 1.2;
-    margin-top: clamp(2px, 0.7vw, 4px);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }}
-
-  .mini-dashboard-error {{
-    border: 1px solid rgba(239, 68, 68, 0.35);
-    border-radius: 10px;
-    padding: 0.85rem 1rem;
-    color: #dc2626;
-    background: rgba(239, 68, 68, 0.08);
-  }}
-</style>
-""",
-        unsafe_allow_html=True,
-    )
 
 
 def _first_five_buildings(buildings: list[str]) -> list[str | None]:
