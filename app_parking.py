@@ -322,6 +322,8 @@ if "vehicle_rows" not in st.session_state:
     st.session_state.vehicle_rows = [{"id": 1}]
 if "next_vehicle_id" not in st.session_state:
     st.session_state.next_vehicle_id = 2
+if "vehicle_count_input" not in st.session_state:
+    st.session_state.vehicle_count_input = 1
 if "last_saved_batch" not in st.session_state:
     st.session_state.last_saved_batch = []
 if "last_saved_rows" not in st.session_state:
@@ -354,19 +356,18 @@ building = st.selectbox("อาคาร (Building)", buildings_list if building
 st.markdown("<br>", unsafe_allow_html=True)
 st.markdown('<div class="section-title">📝 2. ข้อมูลยานพาหนะ</div>', unsafe_allow_html=True)
 
-# ---- Row management controls ----
-ctrl_col1, ctrl_col2, ctrl_col3 = st.columns([2.5, 1.2, 1.2])
+# ---- Row count control ----
+ctrl_col1, ctrl_col2 = st.columns([3, 1])
 with ctrl_col1:
-    st.caption(f"รายการปัจจุบัน: {len(st.session_state.vehicle_rows)} / 100")
+    st.number_input(
+        "จำนวนรายการที่จะบันทึก (1–100)",
+        min_value=1,
+        max_value=100,
+        step=1,
+        key="vehicle_count_input",
+    )
 with ctrl_col2:
-    if st.button("➕ เพิ่มทะเบียน", use_container_width=True):
-        if len(st.session_state.vehicle_rows) >= 100:
-            st.warning("⚠️ เพิ่มได้สูงสุด 100 คัน")
-        else:
-            st.session_state.vehicle_rows.append({"id": st.session_state.next_vehicle_id})
-            st.session_state.next_vehicle_id += 1
-            st.rerun()
-with ctrl_col3:
+    st.write(" ")
     if st.button("🗑️ ล้างรายการ", use_container_width=True):
         for _row in st.session_state.vehicle_rows:
             _rid = _row["id"]
@@ -374,7 +375,21 @@ with ctrl_col3:
             st.session_state.pop(f"province_{_rid}", None)
         st.session_state.vehicle_rows = [{"id": st.session_state.next_vehicle_id}]
         st.session_state.next_vehicle_id += 1
+        st.session_state.vehicle_count_input = 1
         st.rerun()
+
+# Sync vehicle_rows length to the number input
+_desired = int(st.session_state.vehicle_count_input)
+_current = len(st.session_state.vehicle_rows)
+if _desired > _current:
+    for _ in range(_desired - _current):
+        st.session_state.vehicle_rows.append({"id": st.session_state.next_vehicle_id})
+        st.session_state.next_vehicle_id += 1
+elif _desired < _current:
+    for _r in st.session_state.vehicle_rows[_desired:]:
+        st.session_state.pop(f"plate_{_r['id']}", None)
+        st.session_state.pop(f"province_{_r['id']}", None)
+    st.session_state.vehicle_rows = st.session_state.vehicle_rows[:_desired]
 
 # ---- Vehicle input rows (no st.form — delete buttons must be outside form) ----
 for i, row in enumerate(list(st.session_state.vehicle_rows)):
@@ -396,6 +411,7 @@ for i, row in enumerate(list(st.session_state.vehicle_rows)):
                 ]
                 st.session_state.pop(f"plate_{rid}", None)
                 st.session_state.pop(f"province_{rid}", None)
+                st.session_state.vehicle_count_input = len(st.session_state.vehicle_rows)
                 st.rerun()
 
 st.markdown("<br>", unsafe_allow_html=True)
