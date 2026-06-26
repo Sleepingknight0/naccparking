@@ -62,24 +62,26 @@ def get_today_building_counts(
 def render_home_mini_dashboard(
     df: pd.DataFrame,
     buildings: list[str],
+    is_dark: bool | None = None,
     error_message: str | None = None,
 ) -> None:
+    theme_attr = "" if is_dark is None else f' data-theme="{"dark" if is_dark else "light"}"'
     if error_message:
         _render_html(
-            '<div class="mini-dashboard-shell">'
+            f'<div class="mini-dashboard-shell"{theme_attr}>'
             '<div class="mini-dashboard-error">ไม่สามารถโหลดข้อมูลสรุปวันนี้ได้</div>'
             '</div>'
         )
         return
 
     cards = get_today_building_counts(df, buildings)
-    _render_html(_build_dashboard_markup(cards))
+    _render_html(_build_dashboard_markup(cards, theme_attr=theme_attr))
 
 
-def _build_dashboard_markup(cards: list[dict[str, object]]) -> str:
+def _build_dashboard_markup(cards: list[dict[str, object]], theme_attr: str = "") -> str:
     cards_html = "".join(_render_card(card) for card in cards)
     return (
-        '<div class="mini-dashboard-shell">'
+        f'<div class="mini-dashboard-shell"{theme_attr}>'
         '<div class="mini-dashboard-title">สรุปยอดบันทึกวันนี้</div>'
         '<div class="mini-dashboard-wrap" aria-label="สรุปยอดบันทึกรถวันนี้">'
         '<div class="mini-dashboard-grid">'
