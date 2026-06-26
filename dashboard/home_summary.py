@@ -111,10 +111,7 @@ def _render_card(card: dict[str, object]) -> str:
 
 
 def _render_html(markup: str) -> None:
-    if hasattr(st, "html"):
-        st.html(markup)
-    else:
-        st.markdown(markup, unsafe_allow_html=True)
+    st.markdown(markup, unsafe_allow_html=True)
 
 
 

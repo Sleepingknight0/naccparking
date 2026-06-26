@@ -7,7 +7,7 @@ import gspread
 from google.oauth2.service_account import Credentials
 import re
 from dashboard.home_summary import render_home_mini_dashboard
-from dashboard.theme import init_theme_state, is_dark_theme
+from dashboard.theme import apply_theme_css, init_theme_state, is_dark_theme
 from parking_analysis import summarize_long_parkers
 from report_generator import (
     build_detailed_report,
@@ -37,6 +37,8 @@ with col_toggle:
     if dark_mode_toggle != is_dark_theme():
         st.session_state.ui_theme = "dark" if dark_mode_toggle else "light"
         st.rerun()
+
+apply_theme_css()
 
 # ----------------- CUSTOM CSS -----------------
 st.markdown("""
