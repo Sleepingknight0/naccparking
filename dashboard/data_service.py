@@ -10,6 +10,7 @@ import gspread
 import pandas as pd
 import streamlit as st
 from google.oauth2.service_account import Credentials
+from services.google_sheets_service import read_parking_values
 
 
 DATE_COL = "วันที่ตรวจพบ"
@@ -167,7 +168,7 @@ def prepare_dashboard_dataframe(df: pd.DataFrame) -> pd.DataFrame:
 
 
 @st.cache_resource(show_spinner=False)
-def init_dashboard_connection():
+def init_dashboard_spreadsheet():
     scopes = ["https://www.googleapis.com/auth/spreadsheets"]
     if "gcp_service_account" not in st.secrets:
         raise RuntimeError("ไม่พบข้อมูล gcp_service_account ใน st.secrets")
@@ -180,14 +181,38 @@ def init_dashboard_connection():
     )
     client = gspread.authorize(creds)
     spreadsheet = client.open_by_url(st.secrets["spreadsheet_url"])
-    return spreadsheet.worksheet("RawData")
+    return spreadsheet
+
+
+@st.cache_resource(show_spinner=False)
+def init_dashboard_connection():
+    return init_dashboard_spreadsheet().worksheet("RawData")
 
 
 @st.cache_data(ttl=300, show_spinner=False)
 def load_raw_dashboard_data() -> pd.DataFrame:
     sheet = init_dashboard_connection()
-    values = sheet.get("A1:Z")
+    values = read_parking_values(sheet)
     return dataframe_from_sheet_values(values)
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def load_archive_month(year: int, month: int) -> pd.DataFrame:
+    """Load exactly one archive sheet; normal dashboard loading never calls this."""
+    if month < 1 or month > 12:
+        raise ValueError("month must be between 1 and 12")
+    sheet_name = f"Archive_{year:04d}_{month:02d}"
+    try:
+        sheet = init_dashboard_spreadsheet().worksheet(sheet_name)
+    except gspread.WorksheetNotFound:
+        return pd.DataFrame(columns=CANONICAL_COLUMNS)
+    return dataframe_from_sheet_values(sheet.get("A1:Z"))
+
+
+def load_archive_months(months: Iterable[tuple[int, int]]) -> pd.DataFrame:
+    """Load only explicitly selected months and combine their rows."""
+    frames = [load_archive_month(year, month) for year, month in months]
+    return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame(columns=CANONICAL_COLUMNS)
 
 
 @st.cache_data(ttl=300, show_spinner=False)
@@ -222,7 +247,13 @@ def dataframe_from_sheet_values(values: list[list[object]]) -> pd.DataFrame:
         return pd.DataFrame(columns=CANONICAL_COLUMNS)
 
     width = max(len(row) for row in values)
-    headers = _unique_headers(_padded_row(values[0], width))
+    raw_headers = _padded_row(values[0], width)
+    # RawData's verified live schema has blank C/D headers while the app writes
+    # plate and province there. Name only those known positions before uniquifying.
+    for index, canonical_name in enumerate(CANONICAL_COLUMNS):
+        if index < len(raw_headers) and not str(raw_headers[index] or "").strip():
+            raw_headers[index] = canonical_name
+    headers = _unique_headers(raw_headers)
     rows = [_padded_row(row, width) for row in values[1:]]
     return pd.DataFrame(rows, columns=headers)
 

@@ -7,12 +7,15 @@ import pandas as pd
 from dashboard import components
 from dashboard.data_service import (
     BUILDING_COL,
+    CANONICAL_COLUMNS,
     DATE_COL,
     NORMALIZED_PLATE_COL,
     OVERNIGHT_COL,
     PLATE_COL,
     PROVINCE_COL,
     canonicalize_columns,
+    dataframe_from_sheet_values,
+    load_raw_dashboard_data,
     normalize_plate,
     prepare_dashboard_dataframe,
 )
@@ -22,6 +25,29 @@ from dashboard.metrics import build_week_options, compute_kpis, filter_dataframe
 
 
 class DashboardDataServiceTests(unittest.TestCase):
+    @patch("dashboard.data_service.init_dashboard_connection")
+    def test_dashboard_reads_only_parking_input_columns(self, init_connection):
+        sheet = init_connection.return_value
+        sheet.get.return_value = [
+            ["วันที่ตรวจพบ", "อาคาร", "", ""],
+            ["2026-07-01", "อาคาร 1", "กก1", "กทม"],
+        ]
+        load_raw_dashboard_data.clear()
+
+        result = load_raw_dashboard_data()
+
+        self.assertEqual(len(result), 1)
+        sheet.get.assert_called_once_with("A1:D")
+        load_raw_dashboard_data.clear()
+
+    def test_live_rawdata_blank_plate_and_province_headers_use_verified_schema(self):
+        raw = dataframe_from_sheet_values(
+            [["วันที่ตรวจพบ", "อาคาร", "", ""], ["2026-07-01", "อาคาร 1", "กก1", "กทม"]]
+        )
+
+        self.assertEqual(raw.columns.tolist(), CANONICAL_COLUMNS)
+        self.assertEqual(raw.loc[0, PLATE_COL], "กก1")
+
     def test_normalize_plate_removes_spacing_and_dash_variants(self):
         self.assertEqual(normalize_plate(" กก - 1234 "), "กก1234")
         self.assertEqual(normalize_plate("ab--  99"), "AB99")

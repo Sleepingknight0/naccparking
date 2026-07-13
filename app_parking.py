@@ -6,6 +6,7 @@ import json
 import gspread
 from google.oauth2.service_account import Credentials
 import re
+from dashboard.data_service import clear_dashboard_cache
 from dashboard.home_summary import render_home_mini_dashboard
 from dashboard.theme import apply_theme_css, init_theme_state, is_dark_theme
 from parking_analysis import summarize_long_parkers
@@ -18,6 +19,7 @@ from report_generator import (
     to_summary_jpg_bytes,
     to_summary_pdf_bytes,
 )
+from services.google_sheets_service import batch_delete_rows, read_parking_values
 
 # การตั้งค่าหน้าจอเบื้องต้น
 st.set_page_config(
@@ -149,13 +151,17 @@ def init_connection():
     spreadsheet = client.open_by_url(st.secrets["spreadsheet_url"])
     return spreadsheet.worksheet("RawData")
 
+@st.cache_data(ttl=60, show_spinner=False)
+def load_raw_parking_values():
+    return read_parking_values(init_connection())
+
+
 def load_data():
     columns = ["วันที่ตรวจพบ", "อาคาร", "ทะเบียนรถ", "จังหวัด"]
     st.session_state["load_data_error"] = None
 
     try:
-        sheet = init_connection()
-        values = sheet.get("A1:D")
+        values = load_raw_parking_values()
 
         if len(values) > 1:
             return pd.DataFrame(values[1:], columns=columns)
@@ -646,7 +652,7 @@ with btn_col2:
             current_date = datetime.now().strftime("%Y-%m-%d")
             
             try:
-                records = sheet.get_all_values()
+                records = read_parking_values(sheet)
                 form_duplicates = find_form_duplicates(entries)
                 sheet_duplicates = find_sheet_duplicates(records, current_date, entries)
 
@@ -662,6 +668,8 @@ with btn_col2:
                         for entry in entries
                     ]
                     res = sheet.append_rows(rows_to_append)
+                    load_raw_parking_values.clear()
+                    clear_dashboard_cache()
                     saved_rows = parse_updated_rows(res, len(rows_to_append))
                     saved_batch = [
                         {
@@ -698,12 +706,13 @@ if st.session_state.get("last_saved_batch"):
             try:
                 rows_to_delete = saved_rows
                 if not rows_to_delete:
-                    records = sheet.get_all_values()
+                    records = read_parking_values(sheet)
                     rows_to_delete = find_batch_rows_from_sheet(records, saved_batch)
 
                 if rows_to_delete:
-                    for row_number in sorted(set(rows_to_delete), reverse=True):
-                        sheet.delete_rows(row_number)
+                    batch_delete_rows(sheet, rows_to_delete)
+                    load_raw_parking_values.clear()
+                    clear_dashboard_cache()
                 else:
                     st.warning("ไม่พบรายการชุดล่าสุดในระบบ")
 

@@ -1,1 +1,7 @@
 .streamlit/secrets.toml
+*.json.key
+*credentials*.json
+*service-account*.json
+logs/
+__pycache__/
+*.py[cod]
