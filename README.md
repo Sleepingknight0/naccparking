@@ -16,9 +16,13 @@ Sheet columns, in order: `วันที่ตรวจพบ` · `อาคา
 
 ## Requirements
 
-- Python 3.9+
+- Python **3.11** (the version pinned in `.devcontainer/devcontainer.json`)
 - A Google Cloud **service account** with the Google Sheets API enabled
 - A Google Sheet shared with that service account's email as an **editor**
+
+## Run in GitHub Codespaces
+
+Open the repo in a Codespace and the devcontainer installs `requirements.txt` and starts Streamlit on port 8501 automatically, with a preview tab opening on its own. Add `.streamlit/secrets.toml` inside the Codespace before the app can reach the sheet.
 
 ## Setup
 
@@ -73,6 +77,6 @@ requirements.txt   # streamlit, gspread, google-auth
 - The theme toggle rewrites `.streamlit/config.toml` at runtime, so that file changes as the app is used.
 - `app_parking.py` also imports `pandas` and `toml`, which are not currently pinned in `requirements.txt`; install them if a fresh environment fails to start.
 
----
+## License
 
-Forked from [captwcan/naccparking](https://github.com/captwcan/naccparking).
+Forked from [captwcan/naccparking](https://github.com/captwcan/naccparking), which publishes no license. Upstream therefore keeps all rights reserved, and this fork cannot grant terms it does not hold — ask the upstream author before reusing this code.
