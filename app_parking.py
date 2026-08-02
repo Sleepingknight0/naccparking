@@ -19,7 +19,11 @@ from report_generator import (
     to_summary_jpg_bytes,
     to_summary_pdf_bytes,
 )
-from services.google_sheets_service import batch_delete_rows, read_parking_values
+from services.google_sheets_service import (
+    append_parking_rows,
+    batch_delete_rows,
+    read_parking_values,
+)
 
 # การตั้งค่าหน้าจอเบื้องต้น
 st.set_page_config(
@@ -667,7 +671,7 @@ with btn_col2:
                         [current_date, building, entry["plate"], entry["province"]]
                         for entry in entries
                     ]
-                    res = sheet.append_rows(rows_to_append)
+                    res = append_parking_rows(sheet, rows_to_append)
                     load_raw_parking_values.clear()
                     clear_dashboard_cache()
                     saved_rows = parse_updated_rows(res, len(rows_to_append))

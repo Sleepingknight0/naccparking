@@ -64,6 +64,11 @@ def read_parking_values(worksheet) -> list[list[object]]:
     return worksheet.get(PARKING_INPUT_RANGE)
 
 
+def append_parking_rows(worksheet, rows: list[list[object]]):
+    """Append to the A:D parking table even when formula tables exist to its right."""
+    return worksheet.append_rows(rows, table_range=PARKING_INPUT_RANGE)
+
+
 def batch_delete_rows(worksheet, row_numbers: Iterable[int]) -> None:
     """Delete all requested rows with one Sheets batchUpdate request."""
     numbers = sorted(set(int(number) for number in row_numbers))

@@ -15,6 +15,7 @@ from services.archive_service import (
 )
 from services.google_sheets_service import (
     GoogleSheetsService,
+    append_parking_rows,
     batch_delete_rows,
     read_parking_values,
 )
@@ -145,6 +146,17 @@ class ArchivePlanningTests(unittest.TestCase):
 
 
 class GoogleSheetsServiceTests(unittest.TestCase):
+    def test_parking_append_is_scoped_to_input_columns(self):
+        worksheet = Mock()
+        rows = [["2026-08-02", "อาคาร 8", "กก 1234", "กรุงเทพมหานคร"]]
+
+        append_parking_rows(worksheet, rows)
+
+        worksheet.append_rows.assert_called_once_with(
+            rows,
+            table_range="A1:D",
+        )
+
     def test_parking_read_excludes_formula_columns(self):
         worksheet = Mock()
         worksheet.get.return_value = [["header"]]
