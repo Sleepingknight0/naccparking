@@ -59,7 +59,7 @@ class MisplacedParkingRepairTests(unittest.TestCase):
 
         requests = build_repair_requests(sheet_id=42, row_count=20424, rows=rows)
 
-        self.assertEqual(len(requests), 3)
+        self.assertEqual(len(requests), 4)
         self.assertEqual(
             requests[0]["updateCells"]["range"],
             {
@@ -77,6 +77,10 @@ class MisplacedParkingRepairTests(unittest.TestCase):
         self.assertEqual(
             formula,
             '=ARRAYFORMULA(IF(A2:A20424="","",INT(A2:A20424)))',
+        )
+        self.assertEqual(
+            requests[3]["repeatCell"]["cell"]["userEnteredFormat"]["numberFormat"],
+            {"type": "DATE", "pattern": "d/M/yyyy"},
         )
 
     def test_verification_accepts_repaired_rows_and_date_reformatting(self):

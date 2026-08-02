@@ -127,6 +127,25 @@ def build_repair_requests(
             }
         }
     )
+    requests.append(
+        {
+            "repeatCell": {
+                "range": {
+                    "sheetId": sheet_id,
+                    "startRowIndex": 1,
+                    "endRowIndex": row_count,
+                    "startColumnIndex": DISPLACED_START_COLUMN,
+                    "endColumnIndex": DISPLACED_START_COLUMN + 1,
+                },
+                "cell": {
+                    "userEnteredFormat": {
+                        "numberFormat": {"type": "DATE", "pattern": "d/M/yyyy"}
+                    }
+                },
+                "fields": "userEnteredFormat.numberFormat",
+            }
+        }
+    )
     return requests
 
 
@@ -208,9 +227,11 @@ def main() -> int:
     for date_key, count in sorted(counts.items()):
         logger.info("%s: %d rows", date_key, count)
 
-    if args.dry_run or not misplaced:
+    if args.dry_run:
         logger.info("No data was modified.")
         return 0
+    if not misplaced:
+        logger.info("No misplaced rows remain; restoring date_key formula and format only")
     if not args.yes:
         answer = input("Create backup and repair these rows? [y/N]: ").strip().lower()
         if answer not in {"y", "yes"}:
