@@ -2,11 +2,15 @@ from __future__ import annotations
 
 import argparse
 import logging
+import sys
 from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 from typing import Iterable
 from zoneinfo import ZoneInfo
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from services.archive_service import parse_parking_datetime
 from services.google_sheets_service import connect_spreadsheet

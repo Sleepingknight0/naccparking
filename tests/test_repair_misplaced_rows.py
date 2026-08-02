@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import subprocess
+import sys
 import unittest
+from pathlib import Path
 
 from scripts.repair_misplaced_parking_rows import (
     MisplacedRow,
@@ -18,6 +21,19 @@ def misplaced_row(date_key="2026-08-02", building="อาคาร 8", plate="�
 
 
 class MisplacedParkingRepairTests(unittest.TestCase):
+    def test_cli_can_run_as_a_script_from_repository_root(self):
+        repository_root = Path(__file__).resolve().parents[1]
+
+        result = subprocess.run(
+            [sys.executable, "scripts/repair_misplaced_parking_rows.py", "--help"],
+            cwd=repository_root,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_finds_rows_written_to_m_through_p(self):
         result = find_misplaced_rows([HEADER, misplaced_row()])
 
