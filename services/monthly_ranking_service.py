@@ -157,22 +157,17 @@ def monthly_table_formula() -> str:
         "=IFERROR(LET(monthStart,DATE(YEAR($B$1),MONTH($B$1),1),"
         "monthEnd,EOMONTH(monthStart,0),"
         'sourceName,IF(monthStart=$Q$1,"RawData","Archive_"&TEXT(monthStart,"yyyy_mm")),'
-        'rawDates,INDIRECT("\'"&sourceName&"\'!A2:A"),'
-        'rawBuildings,INDIRECT("\'"&sourceName&"\'!B2:B"),'
-        'rawPlates,INDIRECT("\'"&sourceName&"\'!C2:C"),'
-        'rawProvinces,INDIRECT("\'"&sourceName&"\'!D2:D"),'
-        'rawKeys,INDIRECT("\'"&sourceName&"\'!F2:F"),'
-        'nonblank,rawDates<>"",'
-        "dates,FILTER(ARRAYFORMULA(IFERROR(DATEVALUE(rawDates),rawDates)),nonblank),"
-        "buildings,FILTER(rawBuildings,nonblank),"
-        "plates,FILTER(rawPlates,nonblank),"
-        "provinces,FILTER(rawProvinces,nonblank),"
-        "allKeys,FILTER(rawKeys,nonblank),"
-        'monthMask,(dates>=monthStart)*(dates<=monthEnd)*(allKeys<>""),'
-        "monthDates,FILTER(dates,monthMask),"
+        'sourceA,INDIRECT("\'"&sourceName&"\'!A2:A"),'
+        'sourceB,INDIRECT("\'"&sourceName&"\'!B2:B"),'
+        'sourceC,INDIRECT("\'"&sourceName&"\'!C2:C"),'
+        'sourceD,INDIRECT("\'"&sourceName&"\'!D2:D"),'
+        'sourceF,INDIRECT("\'"&sourceName&"\'!F2:F"),'
+        "dates,ARRAYFORMULA(IFERROR(DATEVALUE(sourceA),sourceA)),"
+        'monthDates,FILTER(dates,dates>=monthStart,dates<=monthEnd,sourceA<>""),'
         "firstDate,MIN(monthDates),lastDate,MAX(monthDates),"
         "periodDays,lastDate-firstDate+1,"
-        "source,FILTER({allKeys,plates,provinces,dates},monthMask),"
+        "source,FILTER({sourceF,sourceC,sourceD,dates},dates>=firstDate,"
+        'dates<=lastDate,sourceF<>""),'
         "ranked,QUERY(UNIQUE(source),"
         '"select Col1, max(Col2), max(Col3), count(Col4), min(Col4), max(Col4) '
         "group by Col1 order by count(Col4) desc label Col1 '', max(Col2) '', "
@@ -183,10 +178,10 @@ def monthly_table_formula() -> str:
         "dayPositions,SEQUENCE(ROWS(dayList)),"
         "TEXTJOIN(CHAR(10),TRUE,MAP(SEQUENCE(ROUNDUP(ROWS(dayList)/5,0)),LAMBDA(g,"
         'TEXTJOIN(", ",TRUE,FILTER(dayList,dayPositions>(g-1)*5,dayPositions<=g*5)))))),"")),'
-        "allDays,MAP(keys,LAMBDA(k,dayText(FILTER(dates,allKeys=k,"
+        "allDays,MAP(keys,LAMBDA(k,dayText(FILTER(dates,sourceF=k,"
         "dates>=firstDate,dates<=lastDate)))),"
         "buildingDays,LAMBDA(buildingName,MAP(keys,LAMBDA(k,dayText(FILTER(dates,"
-        "allKeys=k,ARRAYFORMULA(TRIM(TO_TEXT(buildings)))=TRIM(buildingName),"
+        "sourceF=k,ARRAYFORMULA(TRIM(TO_TEXT(sourceB)))=TRIM(buildingName),"
         "dates>=firstDate,dates<=lastDate))))),"
         "building1,buildingDays($K$3),building2,buildingDays($L$3),"
         "building3,buildingDays($M$3),building4,buildingDays($N$3),"
