@@ -35,8 +35,9 @@ class FakeWorksheet:
 
 
 class LoadPlanSpreadsheet:
-    def __init__(self, *, old_formula: bool = False):
+    def __init__(self, *, old_formula: bool = False, bad_validation: bool = False):
         self.old_formula = old_formula
+        self.bad_validation = bad_validation
         self.items = {
             "RawData": FakeWorksheet("RawData", 1),
             "Archive_2026_07": FakeWorksheet("Archive_2026_07", 2),
@@ -67,6 +68,40 @@ class LoadPlanSpreadsheet:
             [["ทั้งหมด"]],
         ]
         return {"valueRanges": [{"values": value} for value in values]}
+
+    def fetch_sheet_metadata(self, params=None):
+        del params
+        source = (
+            "='Backup_MonthlyRanking'!$Q$2:$Q$1000"
+            if self.bad_validation
+            else "='MonthlyRanking'!$Q$2:$Q$1000"
+        )
+        return {
+            "sheets": [
+                {
+                    "properties": {"title": "MonthlyRanking"},
+                    "data": [
+                        {
+                            "rowData": [
+                                {
+                                    "values": [
+                                        {
+                                            "dataValidation": {
+                                                "condition": {
+                                                    "values": [
+                                                        {"userEnteredValue": source}
+                                                    ]
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ],
+                }
+            ]
+        }
 
 
 class FailingWriteSpreadsheet:
@@ -160,6 +195,12 @@ class MonthlyRankingServiceTests(unittest.TestCase):
             month_update["rows"][1]["values"][0]["userEnteredValue"]["numberValue"],
             46235.0,
         )
+        validation = requests[-1]["setDataValidation"]["rule"]
+        self.assertEqual(validation["condition"]["type"], "ONE_OF_RANGE")
+        self.assertEqual(
+            validation["condition"]["values"][0]["userEnteredValue"],
+            "='MonthlyRanking'!$Q$2:$Q$1000",
+        )
 
     def test_verify_summary_checks_counts_and_percentages(self):
         stats = MonthStats(
@@ -197,6 +238,12 @@ class MonthlyRankingServiceTests(unittest.TestCase):
             LoadPlanSpreadsheet(old_formula=True), logging.getLogger("test")
         ).load_plan(now=datetime(2026, 8, 3, tzinfo=BANGKOK))
         self.assertTrue(old_plan.needs_update)
+
+        validation_plan = MonthlyRankingRepair(
+            LoadPlanSpreadsheet(bad_validation=True), logging.getLogger("test")
+        ).load_plan(now=datetime(2026, 8, 3, tzinfo=BANGKOK))
+        self.assertTrue(validation_plan.needs_update)
+        self.assertIn("month dropdown", validation_plan.reasons[-1])
 
     def test_api_error_after_backup_rolls_summary_back(self):
         spreadsheet = FailingWriteSpreadsheet()

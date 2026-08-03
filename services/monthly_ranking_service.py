@@ -239,6 +239,27 @@ def build_update_requests(
         _date_format_request(sheet_id, 0, 3, 1, 4),
         _date_format_request(sheet_id, 0, 5, 1, 6),
         _date_format_request(sheet_id, 0, 16, SUMMARY_ROWS, 17),
+        {
+            "setDataValidation": {
+                "range": {
+                    "sheetId": sheet_id,
+                    "startRowIndex": 0,
+                    "endRowIndex": 1,
+                    "startColumnIndex": 1,
+                    "endColumnIndex": 2,
+                },
+                "rule": {
+                    "condition": {
+                        "type": "ONE_OF_RANGE",
+                        "values": [
+                            {"userEnteredValue": ("='MonthlyRanking'!$Q$2:$Q$1000")}
+                        ],
+                    },
+                    "strict": True,
+                    "showCustomUi": True,
+                },
+            }
+        },
     ]
 
 
@@ -394,6 +415,20 @@ class MonthlyRankingRepair:
             or selected_parsed.date().replace(day=1) not in months
         ):
             reasons.append("selected month is unavailable")
+
+        metadata = self.spreadsheet.fetch_sheet_metadata(
+            params={
+                "includeGridData": True,
+                "ranges": f"'{SUMMARY_SHEET}'!B1",
+            }
+        )
+        validation_source = _validation_source(metadata)
+        if _normalized_validation_range(validation_source) != (
+            "MONTHLYRANKING!Q2:Q1000"
+        ):
+            reasons.append(
+                "month dropdown points to a backup sheet instead of MonthlyRanking"
+            )
 
         return MonthlyRankingPlan(
             current_month=current_month,
@@ -624,3 +659,23 @@ def _escape(name: str) -> str:
 
 def _first_value(values: list[list[object]]) -> object:
     return values[0][0] if values and values[0] else ""
+
+
+def _validation_source(metadata: dict[str, object]) -> str:
+    try:
+        sheet = next(
+            item
+            for item in metadata.get("sheets", [])
+            if item.get("properties", {}).get("title") == SUMMARY_SHEET
+        )
+        return str(
+            sheet["data"][0]["rowData"][0]["values"][0]["dataValidation"]["condition"][
+                "values"
+            ][0]["userEnteredValue"]
+        )
+    except (KeyError, IndexError, StopIteration, TypeError):
+        return ""
+
+
+def _normalized_validation_range(value: str) -> str:
+    return value.lstrip("=").replace("'", "").replace("$", "").upper()
