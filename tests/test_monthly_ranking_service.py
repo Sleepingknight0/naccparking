@@ -137,7 +137,6 @@ class MonthlyRankingServiceTests(unittest.TestCase):
     def test_formula_has_no_old_1000_row_limit(self):
         formula = monthly_table_formula()
         self.assertIn("INDIRECT", formula)
-        self.assertIn('lastPosition,MATCH(2,1/(allDates<>""),1)', formula)
         self.assertIn('"Archive_"&TEXT(monthStart,"yyyy_mm")', formula)
         self.assertNotIn("A1000", formula)
         self.assertNotIn("RawData!A", formula)

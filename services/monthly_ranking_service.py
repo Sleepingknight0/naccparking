@@ -146,9 +146,7 @@ def first_or_last_date_formula(function_name: str) -> str:
     return (
         "=IFERROR(LET(monthStart,DATE(YEAR($B$1),MONTH($B$1),1),"
         'sourceName,IF(monthStart=$Q$1,"RawData","Archive_"&TEXT(monthStart,"yyyy_mm")),'
-        'allDates,INDIRECT("\'"&sourceName&"\'!A2:A"),'
-        'lastPosition,MATCH(2,1/(allDates<>""),1),'
-        "rawDates,ARRAY_CONSTRAIN(allDates,lastPosition,1),"
+        'rawDates,INDIRECT("\'"&sourceName&"\'!A2:A"),'
         'dates,FILTER(ARRAYFORMULA(IFERROR(DATEVALUE(rawDates),rawDates)),rawDates<>""),'
         f'{function_name}(FILTER(dates,dates>=monthStart,dates<=EOMONTH(monthStart,0)))),"")'
     )
@@ -159,14 +157,11 @@ def monthly_table_formula() -> str:
         "=IFERROR(LET(monthStart,DATE(YEAR($B$1),MONTH($B$1),1),"
         "monthEnd,EOMONTH(monthStart,0),"
         'sourceName,IF(monthStart=$Q$1,"RawData","Archive_"&TEXT(monthStart,"yyyy_mm")),'
-        'allDates,INDIRECT("\'"&sourceName&"\'!A2:A"),'
-        'lastPosition,MATCH(2,1/(allDates<>""),1),'
-        "lastRow,lastPosition+1,"
-        "rawDates,ARRAY_CONSTRAIN(allDates,lastPosition,1),"
-        'rawBuildings,INDIRECT("\'"&sourceName&"\'!B2:B"&lastRow),'
-        'rawPlates,INDIRECT("\'"&sourceName&"\'!C2:C"&lastRow),'
-        'rawProvinces,INDIRECT("\'"&sourceName&"\'!D2:D"&lastRow),'
-        'rawKeys,INDIRECT("\'"&sourceName&"\'!F2:F"&lastRow),'
+        'rawDates,INDIRECT("\'"&sourceName&"\'!A2:A"),'
+        'rawBuildings,INDIRECT("\'"&sourceName&"\'!B2:B"),'
+        'rawPlates,INDIRECT("\'"&sourceName&"\'!C2:C"),'
+        'rawProvinces,INDIRECT("\'"&sourceName&"\'!D2:D"),'
+        'rawKeys,INDIRECT("\'"&sourceName&"\'!F2:F"),'
         'nonblank,rawDates<>"",'
         "dates,FILTER(ARRAYFORMULA(IFERROR(DATEVALUE(rawDates),rawDates)),nonblank),"
         "buildings,FILTER(rawBuildings,nonblank),"
