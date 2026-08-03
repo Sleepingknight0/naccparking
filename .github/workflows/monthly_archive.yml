@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: monthly-parking-archive
+  group: parking-data-maintenance
   cancel-in-progress: false
 
 jobs:
@@ -27,3 +27,8 @@ jobs:
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
           SCHEDULED_FLAG: ${{ github.event_name == 'schedule' && '--scheduled' || '' }}
         run: python scripts/archive_old_parking_data.py --execute --yes $SCHEDULED_FLAG
+      - name: Refresh MonthlyRanking archive sources
+        env:
+          GOOGLE_SPREADSHEET_URL: ${{ secrets.GOOGLE_SPREADSHEET_URL }}
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+        run: python scripts/repair_monthly_ranking.py --execute --yes
