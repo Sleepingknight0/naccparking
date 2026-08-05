@@ -1,4 +1,9 @@
 streamlit
 starlette<1.4.0
+pandas
+pillow
 gspread
 google-auth
+reportlab
+toml
+openpyxl
